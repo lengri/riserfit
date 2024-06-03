@@ -2,13 +2,16 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = ["riserfit"]
+
 [project]
 name = "riserfit"
 version = "0.0.2"
 authors = [
   { name="Lennart Grimm" },
 ]
-description = "A clone of the riserfit repo."
+description = "The riserfit Python library for morphological dating."
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
@@ -20,4 +23,13 @@ dependencies = [
   'rasterio',
   'scikit-learn',
   'typing_extensions'
+]
+
+[project.optional-dependencies]
+tutorials = ['jupyter']
+docs = [
+	'sphinx~=5.1',
+  'nbsphinx~=0.8',
+  'nbsphinx_link~=1.3',
+  'sphinx-rtd-theme~=1.0'
 ]
