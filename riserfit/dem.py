@@ -1,3 +1,10 @@
+from __future__ import annotations
+from numpy.typing import ArrayLike
+from typing import Union, Tuple
+from typing_extensions import Self # pre python 3.11
+
+import os, sys
+
 from riserfit.profiles import *
 from scipy.interpolate import interpn
 from scipy.ndimage import gaussian_filter
@@ -6,12 +13,6 @@ import numpy as np
 import pandas as pd
 import rasterio as rio
 import itertools as it
-
-from numpy.typing import ArrayLike
-from typing import Union, Tuple
-from __future__ import annotations
-from typing_extensions import Self # pre python 3.11
-import os, sys
 
 # class for handling list/array reshaping, depending on swath_number
 

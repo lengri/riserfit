@@ -1,3 +1,10 @@
+# type hints
+from __future__ import annotations
+from typing import Union, Tuple
+from numpy.typing import ArrayLike
+from typing import Callable
+from typing_extensions import Self # pre python 3.11
+
 #system stuff
 import os, warnings, sys
 import warnings
@@ -12,13 +19,6 @@ import matplotlib.pyplot as plt
 import scipy as sp
 from scipy.interpolate import interp1d
 from scipy.special import erf
-
-# type hints
-from typing import Union, Tuple
-from numpy.typing import ArrayLike
-from typing import Callable
-from typing_extensions import Self # pre python 3.11
-from __future__ import annotations
 
 # small numeric checker
 def _is_numeric(value):

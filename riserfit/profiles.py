@@ -1,3 +1,9 @@
+# type hints
+from __future__ import annotations # necessary for some typing shenanigans
+from numpy.typing import ArrayLike
+from typing import Union, Tuple, List
+from typing_extensions import Self # pre python 3.11
+
 #system stuff
 import os, warnings, sys, traceback
 
@@ -21,12 +27,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from .diffusion import nonlin_diff_perron2011
 from .dem import *
 from .riser_maths import *
-
-# type hints
-from numpy.typing import ArrayLike
-from typing import Union, Tuple, List
-from typing_extensions import Self # pre python 3.11
-from __future__ import annotations # necessary for some typing shenanigans
 
 #########################################################################
 ## Part 1: Dealing with files, file management, setting up Riser class ##

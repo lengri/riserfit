@@ -1,16 +1,15 @@
+from __future__ import annotations
+from numpy.typing import ArrayLike
+from typing import Union, Tuple
+from typing_extensions import Self # pre python 3.11
+
+import sys, os
+
 import numpy as np
 import warnings
 from scipy.linalg import solve_banded
 from matplotlib.animation import FuncAnimation, PillowWriter
 import matplotlib.pyplot as plt
-
-from numpy.typing import ArrayLike
-from typing import Union, Tuple
-from __future__ import annotations
-from typing_extensions import Self # pre python 3.11
-
-import sys, os
-
 
 # small numeric checker
 def _is_numeric(value):

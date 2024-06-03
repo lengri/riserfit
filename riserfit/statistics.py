@@ -1,3 +1,9 @@
+# for type hinting
+from __future__ import annotations
+from typing import Union, Tuple
+from numpy.typing import ArrayLike
+from typing_extensions import Self # pre python 3.11
+
 from .profiles import *
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,12 +14,6 @@ from scipy.stats import f as f_dist
 from skspatial.objects import Line # reprojecting
 from scipy.linalg import block_diag
 
-# for type hinting
-from typing import Union, Tuple
-from numpy.typing import ArrayLike
-from typing_extensions import Self # pre python 3.11
-from __future__ import annotations
-
 # small numeric checker
 def _is_numeric(value):
     try:
@@ -21,8 +21,6 @@ def _is_numeric(value):
         return True
     except:
         return False
-
-
 
 def sample_2d_grid(
     p0: float,
