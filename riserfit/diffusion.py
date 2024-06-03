@@ -622,7 +622,7 @@ def nonlin_diff_gabet2021(
             Print a warning if slopes get more negative than this value.
 
     Returns:
-    -----
+    --------
         prof_matrix: np.ndarray
             Matrix containing rows of profiles, first row being the initial
             profile, last row being the profile at time dt*n_t.

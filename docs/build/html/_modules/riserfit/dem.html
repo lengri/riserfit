@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>riserfit.dem &mdash; riserfit 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="author" title="About these documents" href="../../about.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            riserfit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">riserfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">riserfit.dem</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for riserfit.dem</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Self</span> <span class="c1"># pre python 3.11</span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span>
+
+<span class="kn">from</span> <span class="nn">riserfit.profiles</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interpn</span>
+<span class="kn">from</span> <span class="nn">scipy.ndimage</span> <span class="kn">import</span> <span class="n">gaussian_filter</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">rasterio</span> <span class="k">as</span> <span class="nn">rio</span>
+<span class="kn">import</span> <span class="nn">itertools</span> <span class="k">as</span> <span class="nn">it</span>
+
+<span class="c1"># class for handling list/array reshaping, depending on swath_number</span>
+
+<div class="viewcode-block" id="Constructor_Extractor"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor">[docs]</a><span class="k">class</span> <span class="nc">Constructor_Extractor</span><span class="p">:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd"> 	Internal class for handeling profile building and extraction from a</span>
+<span class="sd">	DEM.</span>
+<span class="sd">  	&quot;&quot;&quot;</span>
+	<span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+		<span class="bp">self</span><span class="p">,</span>
+		<span class="n">centerpoints</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> 
+		<span class="n">directions</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+		<span class="n">start_end_points</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+		<span class="n">n_points_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+		<span class="n">spacing_array</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+		<span class="n">swath_number</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+		<span class="n">swath_spacing</span><span class="p">:</span> <span class="nb">float</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Initialize a Constructor_Extractor instance.</span>
+<span class="sd">  </span>
+<span class="sd">		Parameters:</span>
+<span class="sd">		-----------</span>
+<span class="sd">			centerpoints: list</span>
+<span class="sd">				List tuples of centerpoints (x, y).</span>
+<span class="sd">			directions: list</span>
+<span class="sd">				List of tuples of profile orientations (x, y).</span>
+<span class="sd">			start_end_points: bool</span>
+<span class="sd">				If true, the centerpoints list is interpreted as a</span>
+<span class="sd">				list of tuples where tuple i indicates the start point, </span>
+<span class="sd">				and tuple i+1 indicates the end point of a profile.</span>
+<span class="sd">			n_points_array: np.ndarray</span>
+<span class="sd">				Number of points in each profile.</span>
+<span class="sd">			spacing_array: np.ndarray</span>
+<span class="sd">				The spacing between points in each profile. Note: this</span>
+<span class="sd">				parameter is ignored if start_end_points == True.</span>
+<span class="sd">			swath_number: float</span>
+<span class="sd">				The number of parallel profile lines for each profile.</span>
+<span class="sd">			swath_spacing: float</span>
+<span class="sd">				The distances between swath lines.</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">		--------</span>
+<span class="sd">			None</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span> <span class="o">=</span> <span class="n">centerpoints</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">directions</span> <span class="o">=</span> <span class="n">directions</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">start_end_points</span> <span class="o">=</span> <span class="n">start_end_points</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">n_points_array</span> <span class="o">=</span> <span class="n">n_points_array</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">spacing_array</span> <span class="o">=</span> <span class="n">spacing_array</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span> <span class="o">=</span> <span class="n">swath_number</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">swath_spacing</span> <span class="o">=</span> <span class="n">swath_spacing</span>
+
+<div class="viewcode-block" id="Constructor_Extractor.build_center_profiles"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor.build_center_profiles">[docs]</a>	<span class="k">def</span> <span class="nf">build_center_profiles</span><span class="p">(</span>
+		<span class="bp">self</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Build profiles based on the provided data.</span>
+
+<span class="sd">		Parameters:</span>
+<span class="sd">		-----------</span>
+<span class="sd">			None</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">		--------</span>
+<span class="sd">			self: Self</span>
+<span class="sd">				The Constructor\_Extractor instance.</span>
+<span class="sd">		&quot;&quot;&quot;</span>
+		<span class="n">p_lines</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="c1"># center lines for both start_end_point true or false,</span>
+		<span class="c1"># the correct spacing should be chosen in the dem.py script.</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span><span class="p">):</span>
+
+			<span class="c1"># build a profile line (centerline, if swath_number &gt; 0)</span>
+			<span class="n">p_line</span> <span class="o">=</span> <span class="n">extrapolate_line_from_point</span><span class="p">(</span>
+				<span class="n">centerpoint</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">point</span><span class="p">),</span>
+				<span class="n">direction</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span>
+				<span class="n">n_points</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_points_array</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+				<span class="n">spacing</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">spacing_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+			<span class="p">)</span>
+
+			<span class="c1"># nested list, each sub-list contains (y, x) tuples</span>
+			<span class="n">p_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_line</span><span class="p">)</span> 
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">centerlines</span> <span class="o">=</span> <span class="n">p_lines</span>
+
+		<span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Constructor_Extractor.build_swath_profiles"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor.build_swath_profiles">[docs]</a>	<span class="k">def</span> <span class="nf">build_swath_profiles</span><span class="p">(</span>
+		<span class="bp">self</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+
+<span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">  		Build swath profile point tuples based on the input data.</span>
+
+<span class="sd">		Parameters:</span>
+<span class="sd">		-----------</span>
+<span class="sd">			None</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">		--------</span>
+<span class="sd">			self: Self</span>
+<span class="sd">				The Constructor_Extractor instance.</span>
+<span class="sd">    	&quot;&quot;&quot;</span>
+
+		<span class="c1"># assuming that swath_number &gt; 0...</span>
+		<span class="n">big_profile_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">centerline</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerlines</span><span class="p">):</span>
+
+			<span class="c1"># contains all points for a swath profile</span>
+			<span class="n">single_profile_list</span> <span class="o">=</span> <span class="p">[]</span>
+			<span class="n">single_profile_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">centerline</span><span class="p">)</span> 
+
+			<span class="c1"># build a list for each swath line (offset from centerline)</span>
+			<span class="c1"># rotate direction by 90 degrees</span>
+			<span class="n">azimuth90</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+
+			<span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+
+				<span class="c1"># one subswath offset in +j*spacing*azimuth90</span>
+				<span class="n">subswath</span> <span class="o">=</span> <span class="p">[(</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">swath_spacing</span><span class="o">*</span><span class="n">j</span><span class="o">*</span><span class="n">azimuth90</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+					<span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">swath_spacing</span><span class="o">*</span><span class="n">j</span><span class="o">*</span><span class="n">azimuth90</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">centerline</span><span class="p">]</span>
+				<span class="n">single_profile_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subswath</span><span class="p">)</span>
+
+				<span class="c1"># one subswath offset in -j*spacing*azimuth90</span>
+				<span class="n">subswath</span> <span class="o">=</span> <span class="p">[(</span><span class="n">c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">swath_spacing</span><span class="o">*</span><span class="n">j</span><span class="o">*</span><span class="n">azimuth90</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+					<span class="n">c</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">swath_spacing</span><span class="o">*</span><span class="n">j</span><span class="o">*</span><span class="n">azimuth90</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">centerline</span><span class="p">]</span>
+				<span class="n">single_profile_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">subswath</span><span class="p">)</span>
+			
+			<span class="c1"># list of swath lines for one profile complete, append to</span>
+			<span class="c1"># big list.</span>
+			<span class="n">big_profile_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">single_profile_list</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">swath_list</span> <span class="o">=</span> <span class="n">big_profile_list</span>
+
+		<span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="Constructor_Extractor.build_decomposed_point_list"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor.build_decomposed_point_list">[docs]</a>	<span class="k">def</span> <span class="nf">build_decomposed_point_list</span><span class="p">(</span>
+		<span class="bp">self</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Builds and unravelles a nested list containing profile lines, swaths,</span>
+<span class="sd">		and points. The decomposed list is used for efficient </span>
+<span class="sd">		elevation extraction from the DEM.</span>
+<span class="sd">  </span>
+<span class="sd">		Parameters:</span>
+<span class="sd">		-----------</span>
+<span class="sd">			None</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">		--------</span>
+<span class="sd">			self: Self</span>
+<span class="sd">				The Constructor_Extractor instance.</span>
+<span class="sd">  		&quot;&quot;&quot;</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="c1"># simple decomposition in one step...</span>
+			<span class="c1"># merge all p_line together, keep track of each length</span>
+			<span class="n">point_number</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">prof</span><span class="p">)</span> <span class="k">for</span> <span class="n">prof</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">centerlines</span><span class="p">]</span>
+			<span class="n">point_number</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">point_number</span><span class="p">)))</span>
+			<span class="n">points</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerlines</span><span class="p">))</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">single_line_point_number</span> <span class="o">=</span> <span class="n">point_number</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">decomposed_single_line_points</span> <span class="o">=</span> <span class="n">points</span>
+
+		<span class="k">else</span><span class="p">:</span>
+			<span class="c1"># the swath_list is constructed like this:</span>
+			<span class="c1"># swath list = [s1, s2, ..., sn]</span>
+			<span class="c1"># s1 = [l1, l2, ..., lm]</span>
+			<span class="c1"># l1 = [(y1, x1), (y2, x2), ..., (yk,xk)]</span>
+
+			<span class="c1"># decompose list</span>
+			<span class="n">points_temp</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">swath_list</span><span class="p">))</span>
+			<span class="n">points</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span><span class="n">points_temp</span><span class="p">))</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">decomposed_swath_line_points</span> <span class="o">=</span> <span class="n">points</span>
+
+			<span class="c1"># keep track of the origin of points in decomposed list</span>
+			<span class="n">ordered_line_len_counter</span> <span class="o">=</span> <span class="p">[]</span>
+			<span class="n">n_swaths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+
+			<span class="k">for</span> <span class="n">n_points</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_points_array</span><span class="p">:</span>
+				<span class="n">line_len</span> <span class="o">=</span> <span class="n">n_points</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+				<span class="c1"># stores line lines for each profile</span>
+				<span class="n">ordered_line_len_counter</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line_len</span><span class="p">)</span>
+
+			<span class="bp">self</span><span class="o">.</span><span class="n">ordered_line_len_counter</span> <span class="o">=</span> <span class="n">ordered_line_len_counter</span>
+
+		<span class="k">return</span> <span class="bp">self</span></div>
+
+	
+<div class="viewcode-block" id="Constructor_Extractor.reconstruct_elevation_list"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor.reconstruct_elevation_list">[docs]</a>	<span class="k">def</span> <span class="nf">reconstruct_elevation_list</span><span class="p">(</span>
+		<span class="bp">self</span><span class="p">,</span>
+		<span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+
+<span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">		Re-form a nested list, grouped according to profiles, swaths, points.</span>
+<span class="sd">		This function relates to build_decomposed_point_list().</span>
+<span class="sd">  </span>
+<span class="sd">		Parameters:</span>
+<span class="sd">		-----------</span>
+<span class="sd">			z: np.ndarray</span>
+<span class="sd">				Elevations extracted from the DEM.</span>
+
+<span class="sd">		Returns:</span>
+<span class="sd">		--------</span>
+<span class="sd">			self: Self</span>
+<span class="sd">				The Constructor_Extractor instance.</span>
+<span class="sd">  		&quot;&quot;&quot;</span>
+		<span class="n">profile_z_list</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">slpn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_line_point_number</span>
+
+			<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">center</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span><span class="p">):</span>
+
+				<span class="n">z_profile</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="n">slpn</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span><span class="n">slpn</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]])</span>
+				<span class="n">profile_z_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z_profile</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+
+			<span class="n">swath_line_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span><span class="o">*</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+
+			<span class="n">profile_points_indices</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+			<span class="c1"># get indices of start and end for all points belonging</span>
+			<span class="c1"># to one profile</span>
+			<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">center</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span><span class="p">):</span>
+
+				<span class="c1"># get total number of points in one profile:</span>
+				<span class="n">n_line_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ordered_line_len_counter</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+				<span class="n">n_profile_points</span> <span class="o">=</span> <span class="n">n_line_points</span> <span class="o">*</span> <span class="n">swath_line_number</span>
+				<span class="n">profile_points_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n_profile_points</span><span class="p">)</span>
+			<span class="n">profile_points_indices</span> <span class="o">=</span> \
+				<span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">profile_points_indices</span><span class="p">)))</span>
+			<span class="c1">#print(profile_points_indices)</span>
+			<span class="c1"># extract elevation values and reshape to array with</span>
+			<span class="c1"># shape (n_line_points, swath_line_number)</span>
+			<span class="c1"># calculate row-wise averages, append to profile_z_list</span>
+
+			<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">center</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span><span class="p">):</span>
+
+				<span class="n">z_1d</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="n">profile_points_indices</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span><span class="n">profile_points_indices</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]]</span>
+				<span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ordered_line_len_counter</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">swath_line_number</span><span class="p">)</span>
+				<span class="n">z_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">z_1d</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
+				<span class="n">z_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">z_2d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+				<span class="n">profile_z_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z_profile</span><span class="p">)</span>
+
+		<span class="bp">self</span><span class="o">.</span><span class="n">profile_z_list</span> <span class="o">=</span> <span class="n">profile_z_list</span>
+	
+		<span class="k">return</span> <span class="bp">self</span></div></div>
+
+
+<span class="c1"># function that reads a .csv containing a list of easting/northing values</span>
+<span class="c1"># to be used as center points for constructing profile lines</span>
+<span class="c1"># and outputs the profile lines</span>
+
+<div class="viewcode-block" id="construct_z_profiles_from_centerpoints"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.construct_z_profiles_from_centerpoints">[docs]</a><span class="k">def</span> <span class="nf">construct_z_profiles_from_centerpoints</span><span class="p">(</span>
+	<span class="n">rasterpath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+	<span class="n">pointfilepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+	<span class="n">namecol</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span>
+	<span class="n">df_x</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+	<span class="n">df_y</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span>
+	<span class="n">start_end_points</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+	<span class="n">n_points</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+	<span class="n">spacing</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span>
+	<span class="n">swath_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+	<span class="n">swath_spacing</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.</span><span class="p">,</span>
+	<span class="n">band_no</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+	<span class="n">smooth_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+	<span class="n">savedir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;DEM_profiles&quot;</span><span class="p">,</span>
+	<span class="n">view_profiles</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+	<span class="n">dem_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+	<span class="n">dem_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">800.</span><span class="p">,</span>
+	<span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+	<span class="o">**</span><span class="n">pd_kwargs</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Load a .csv containing a list of profile center points, construct</span>
+<span class="sd">	profile lines from them, and save them in separate .csv files. Also</span>
+<span class="sd">	returns the created pandas.DataFrame.</span>
+
+<span class="sd">	Parameters:</span>
+<span class="sd">	-----------</span>
+<span class="sd">		rasterpath: str</span>
+<span class="sd">			Path to DEM raster (ideally a .tif file or similar).</span>
+<span class="sd">		pointfilepath: str</span>
+<span class="sd">			Path to .csv file containing points acting as centers for profile</span>
+<span class="sd">			lines.</span>
+<span class="sd">		namecol: str</span>
+<span class="sd">			Column name in .csv file for the profile names.</span>
+<span class="sd">		df_x: str</span>
+<span class="sd">			Name of x coordinate column in .csv file.</span>
+<span class="sd">		df_y: str</span>
+<span class="sd">			Name of y coordinate column in .csv file.</span>
+<span class="sd">		n_points: int</span>
+<span class="sd">			Number of points to be projected in each direction from centerpoint</span>
+<span class="sd">			defined by the .csv file in pointfilepath. Total number of points</span>
+<span class="sd">			will be 2 * n_points + 1.</span>
+<span class="sd">			Alternatively, if n_points is a string, it is interpreted as</span>
+<span class="sd">			the .csv column containing n_points information for each </span>
+<span class="sd">			center point separately.</span>
+<span class="sd">		spacing: float or str</span>
+<span class="sd">			Spacing between two consecutive points in the profile.</span>
+<span class="sd">			Alternatively, if spacing is a string, it is interpreted as</span>
+<span class="sd">			the .csv column containing spacing information for each</span>
+<span class="sd">			profile separately.</span>
+<span class="sd">		swath_number: int</span>
+<span class="sd">			Number of parallel lines extracted for each profile. Total number</span>
+<span class="sd">			is 2 * swath_number + 1.</span>
+<span class="sd">		swath_spacing: float</span>
+<span class="sd">			Distance between the swath lines of a profile.</span>
+<span class="sd">		band_no: int</span>
+<span class="sd">			Number of band to be interpreted as the DEM in rasterpath file.</span>
+<span class="sd">			Default is 1.</span>
+<span class="sd">		smooth_first: bool</span>
+<span class="sd">			Use a smoothed DEM to calculate the aspect. This will not affect</span>
+<span class="sd">			the elevation values extracted from the DEM.</span>
+<span class="sd">		method: str</span>
+<span class="sd">			Interpolation method for extracting values from the DEM. Default</span>
+<span class="sd">			is linear interpolation. Can take any values recognized by</span>
+<span class="sd">			scipy.interpolate.interpn().</span>
+<span class="sd">		savedir: str</span>
+<span class="sd">			File path to directory where files are to be saved. If it does not</span>
+<span class="sd">			exist, the directory is created.</span>
+<span class="sd">		verbose: bool</span>
+<span class="sd">			If True, print some status updates while processing.</span>
+
+<span class="sd">	Returns:</span>
+<span class="sd">	--------</span>
+<span class="sd">		profiles: list</span>
+<span class="sd">			A list of pandas dataframes that can be forwarded into</span>
+<span class="sd">			riserfit.initialize_riser_class().</span>
+<span class="sd">		names: list</span>
+<span class="sd">			A list of profile names that can be forwarded into</span>
+<span class="sd">			riserfit.initialize_riser_class().</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">pointfilepath</span><span class="p">,</span> <span class="o">**</span><span class="n">pd_kwargs</span><span class="p">)</span>
+	<span class="c1">#print(df)</span>
+	<span class="c1"># create directory for storing results</span>
+	<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">savedir</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span>
+	<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+		<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+	
+	<span class="k">if</span> <span class="n">start_end_points</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+		<span class="n">names</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">namecol</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+		<span class="n">xx</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_x</span><span class="p">])</span>
+		<span class="n">x</span> <span class="o">=</span> <span class="n">xx</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+		<span class="n">yy</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_y</span><span class="p">])</span>
+		<span class="n">y</span> <span class="o">=</span> <span class="n">yy</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+		<span class="n">points</span> <span class="o">=</span> <span class="p">[(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span>
+
+		<span class="c1"># get a direction vector associated with each point:</span>
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Calculating profile azimuths&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;... &quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+		<span class="n">directions</span> <span class="o">=</span> <span class="n">calculate_aspect</span><span class="p">(</span>
+			<span class="n">rasterpath</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">band_no</span><span class="p">,</span> <span class="n">smooth_first</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span>
+		<span class="p">)</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+
+	<span class="k">else</span><span class="p">:</span>
+		<span class="c1"># check that df has even number of points</span>
+		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Cannot construct profiles from start/end pairs for&quot;</span>
+				<span class="s2">&quot;uneven number of points in DataFrame.&quot;</span><span class="p">)</span>
+		<span class="c1"># get x coordinates of starting &amp; endpoints:</span>
+		<span class="n">x_start</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_x</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">x_end</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_x</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">y_start</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_y</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">y_end</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">df_y</span><span class="p">])</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+		<span class="c1"># construct midpoints:</span>
+		<span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_start</span> <span class="o">+</span> <span class="n">x_end</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+		<span class="n">y</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_start</span> <span class="o">+</span> <span class="n">y_end</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+		<span class="n">points</span> <span class="o">=</span> <span class="p">[(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)]</span> <span class="c1"># new midpoints</span>
+
+		<span class="c1"># direction vector</span>
+		<span class="n">x_dir</span> <span class="o">=</span> <span class="n">x_end</span> <span class="o">-</span> <span class="n">x_start</span>
+		<span class="n">y_dir</span> <span class="o">=</span> <span class="n">y_end</span> <span class="o">-</span> <span class="n">y_start</span>
+		<span class="c1"># normalize</span>
+		<span class="n">dir_len</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x_dir</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">y_dir</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+		<span class="n">directions</span> <span class="o">=</span> <span class="p">[(</span><span class="n">y</span><span class="o">/</span><span class="n">dir_len</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">x</span><span class="o">/</span><span class="n">dir_len</span><span class="p">[</span><span class="n">k</span><span class="p">])</span> \
+			<span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">x_dir</span><span class="p">,</span> <span class="n">y_dir</span><span class="p">))]</span>
+
+		<span class="c1"># get names:</span>
+		<span class="n">names</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">namecol</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()[</span><span class="mi">0</span><span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+
+	<span class="c1"># prefixes for csv files, ensures correct ordering.</span>
+
+	<span class="n">prof_no</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+	<span class="n">prof_base</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s2">&quot;0&quot;</span><span class="p">])</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">prof_no</span><span class="p">))</span>
+	<span class="n">number</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">prof_no</span><span class="p">)]</span>
+	<span class="n">prof_name</span> <span class="o">=</span> <span class="p">[</span><span class="n">prof_base</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">number</span><span class="p">]</span>
+	<span class="n">prof_name_cut</span> <span class="o">=</span> <span class="p">[</span>
+     	<span class="n">pn</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">number</span><span class="p">[</span><span class="n">i</span><span class="p">])):]</span> 
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">pn</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">prof_name</span><span class="p">)</span>
+	<span class="p">]</span>
+
+	<span class="c1"># check if n_points and/or spacing are str</span>
+	<span class="c1"># if yes, each spacing and n_points is treated separately</span>
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">n_points</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+		<span class="n">n_points_array</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">n_points</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">n_points_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">),</span> <span class="n">n_points</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">spacing</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+		<span class="n">spacing_array</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">spacing</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+	<span class="k">else</span><span class="p">:</span> 
+		<span class="n">spacing_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">names</span><span class="p">),</span> <span class="n">spacing</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">start_end_points</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+		<span class="c1"># spacing needs is determined by n_points and distance</span>
+		<span class="c1"># between start and end points</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">points</span><span class="p">):</span>
+			<span class="n">cent_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+			<span class="n">star_p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">y_start</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">x_start</span><span class="p">[</span><span class="n">i</span><span class="p">]])</span>
+			<span class="n">start_end_dist</span> <span class="o">=</span>  <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">cent_p</span><span class="o">-</span><span class="n">star_p</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+			<span class="n">spacing_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">start_end_dist</span> <span class="o">/</span> <span class="p">(</span><span class="n">n_points_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+	<span class="c1"># attempt fast execution by bulking all points into one long list...</span>
+	<span class="k">try</span><span class="p">:</span>
+     
+		<span class="c1"># sample raster at all_points</span>
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> 
+			<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Attempting fast point extraction&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;... &quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+		
+		<span class="c1"># initialize Constructor_Extractor class:</span>
+		<span class="n">ce</span> <span class="o">=</span> <span class="n">Constructor_Extractor</span><span class="p">(</span>
+			<span class="n">points</span><span class="p">,</span>
+			<span class="n">directions</span><span class="p">,</span>
+			<span class="n">start_end_points</span><span class="p">,</span>
+			<span class="n">n_points_array</span><span class="p">,</span>
+			<span class="n">spacing_array</span><span class="p">,</span>
+			<span class="n">swath_number</span><span class="p">,</span>
+			<span class="n">swath_spacing</span>
+		<span class="p">)</span>
+
+		<span class="n">ce</span><span class="o">.</span><span class="n">build_center_profiles</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">swath_number</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+			<span class="n">ce</span><span class="o">.</span><span class="n">build_swath_profiles</span><span class="p">()</span>
+			<span class="n">ce</span><span class="o">.</span><span class="n">build_decomposed_point_list</span><span class="p">()</span>
+			<span class="n">all_points</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">decomposed_swath_line_points</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">ce</span><span class="o">.</span><span class="n">build_decomposed_point_list</span><span class="p">()</span>
+			<span class="n">all_points</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">decomposed_single_line_points</span>
+	
+		<span class="n">z_profiles</span> <span class="o">=</span> <span class="n">sample_raster_at_points</span><span class="p">(</span>
+			<span class="n">rasterpath</span><span class="o">=</span><span class="n">rasterpath</span><span class="p">,</span>
+			<span class="n">rc_points</span><span class="o">=</span><span class="n">all_points</span><span class="p">,</span>
+			<span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+			<span class="n">band_no</span><span class="o">=</span><span class="n">band_no</span>
+		<span class="p">)</span>	
+  
+		<span class="n">centerlines</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">centerlines</span>
+  
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+		<span class="n">ce</span><span class="o">.</span><span class="n">reconstruct_elevation_list</span><span class="p">(</span><span class="n">z_profiles</span><span class="p">)</span> <span class="c1"># restructure</span>
+		<span class="n">z_profiles</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">profile_z_list</span>
+
+	<span class="k">except</span> <span class="ne">MemoryError</span> <span class="k">as</span> <span class="n">E</span><span class="p">:</span>
+     
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fast execution failed:&quot;</span><span class="p">,</span> <span class="n">E</span><span class="p">)</span>
+		
+		<span class="c1"># instead of bulking all points into one long list,</span>
+		<span class="c1"># call sample_raster_at_points once per profile.</span>
+		<span class="n">z_profiles_out</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="n">centerlines</span> <span class="o">=</span> <span class="p">[]</span>
+		<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)):</span>
+			<span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+       			<span class="s1">&#39;</span><span class="se">\r</span><span class="s1">&#39;</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;Attempting slow point extraction... </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+          	<span class="p">)</span>
+			<span class="n">ce</span> <span class="o">=</span> <span class="n">Constructor_Extractor</span><span class="p">(</span>
+				<span class="p">[</span><span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span>
+				<span class="p">[</span><span class="n">directions</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span>
+				<span class="n">start_end_points</span><span class="p">,</span>
+				<span class="p">[</span><span class="n">n_points_array</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span>
+				<span class="p">[</span><span class="n">spacing_array</span><span class="p">[</span><span class="n">i</span><span class="p">]],</span>
+				<span class="n">swath_number</span><span class="p">,</span>
+				<span class="n">swath_spacing</span>
+			<span class="p">)</span>
+
+			<span class="n">ce</span><span class="o">.</span><span class="n">build_center_profiles</span><span class="p">()</span>
+			<span class="k">if</span> <span class="n">swath_number</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+				<span class="n">ce</span><span class="o">.</span><span class="n">build_swath_profiles</span><span class="p">()</span>
+				<span class="n">ce</span><span class="o">.</span><span class="n">build_decomposed_point_list</span><span class="p">()</span>
+				<span class="n">all_points</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">decomposed_swath_line_points</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="n">ce</span><span class="o">.</span><span class="n">build_decomposed_point_list</span><span class="p">()</span>
+				<span class="n">all_points</span> <span class="o">=</span> <span class="n">ce</span><span class="o">.</span><span class="n">decomposed_single_line_points</span>
+
+			<span class="n">z_profiles</span> <span class="o">=</span> <span class="n">sample_raster_at_points</span><span class="p">(</span>
+				<span class="n">rasterpath</span><span class="o">=</span><span class="n">rasterpath</span><span class="p">,</span>
+				<span class="n">rc_points</span><span class="o">=</span><span class="n">all_points</span><span class="p">,</span>
+				<span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+				<span class="n">band_no</span><span class="o">=</span><span class="n">band_no</span>
+			<span class="p">)</span>	
+
+			<span class="n">ce</span><span class="o">.</span><span class="n">reconstruct_elevation_list</span><span class="p">(</span><span class="n">z_profiles</span><span class="p">)</span> <span class="c1"># restructure</span>
+			<span class="n">z_profiles_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ce</span><span class="o">.</span><span class="n">profile_z_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="c1"># only one entry??</span>
+			<span class="n">centerlines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ce</span><span class="o">.</span><span class="n">centerlines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+   
+		<span class="n">z_profiles</span> <span class="o">=</span> <span class="n">z_profiles_out</span>
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+
+	<span class="c1"># get centerline x, y coordinate, name for each point</span>
+	<span class="c1"># center profile</span>
+	<span class="c1"># save to df</span>
+	
+	<span class="n">profiles_df</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saving profiles&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;... &quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+	
+	<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">names</span><span class="p">):</span>
+
+		<span class="n">id_profile</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;-</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">n_points_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+		<span class="c1"># x is column direction</span>
+		<span class="n">x_profile</span> <span class="o">=</span> <span class="p">[</span><span class="n">x_col</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">x_col</span> <span class="ow">in</span> <span class="n">centerlines</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+		<span class="n">y_profile</span> <span class="o">=</span> <span class="p">[</span><span class="n">y_row</span> <span class="k">for</span> <span class="n">y_row</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">centerlines</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+		<span class="n">z_profile</span> <span class="o">=</span> <span class="n">z_profiles</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		
+		<span class="c1"># mirror if first z &gt; last z</span>
+		<span class="k">if</span> <span class="n">z_profile</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">z_profile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+			<span class="n">x_profile</span> <span class="o">=</span> <span class="n">x_profile</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+			<span class="n">y_profile</span> <span class="o">=</span> <span class="n">y_profile</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+			<span class="n">z_profile</span> <span class="o">=</span> <span class="n">z_profile</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+		<span class="c1"># save to df</span>
+
+		<span class="n">df_dict</span> <span class="o">=</span> <span class="p">{</span>
+			<span class="s2">&quot;ID&quot;</span><span class="p">:</span> <span class="n">id_profile</span><span class="p">,</span>
+			<span class="s2">&quot;x&quot;</span><span class="p">:</span> <span class="n">x_profile</span><span class="p">,</span>
+			<span class="s2">&quot;y&quot;</span><span class="p">:</span> <span class="n">y_profile</span><span class="p">,</span>
+			<span class="s2">&quot;z&quot;</span><span class="p">:</span> <span class="mi">0</span>  <span class="c1"># placeholder, z will be shifted below anyways</span>
+		<span class="p">}</span>
+		
+		<span class="n">profile_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">df_dict</span><span class="p">)</span>
+
+		<span class="c1"># calculate along-profile distance (d)</span>
+		<span class="n">profile_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;dd&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spacing_array</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+		<span class="n">profile_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s1">&#39;d&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
+		<span class="n">profile_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">profile_df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="s1">&#39;d&#39;</span><span class="p">)]</span> <span class="o">=</span> \
+			<span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">profile_df</span><span class="p">[</span><span class="s1">&#39;dd&#39;</span><span class="p">])</span>
+
+		<span class="c1"># center the profile: </span>
+		<span class="c1"># 1. elevation center, </span>
+		<span class="c1"># 2. shift such that z = 0 is</span>
+		<span class="c1"># at d = 0. </span>
+		<span class="c1"># We&#39;ll do it in a way such that a point at (0, 0) exists.</span>
+
+		<span class="c1"># elevation midpoint:</span>
+		<span class="n">z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">z_profile</span><span class="p">)</span>
+		<span class="n">z_mid</span> <span class="o">=</span> <span class="p">(</span><span class="n">z</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">z</span><span class="o">.</span><span class="n">min</span><span class="p">())</span> <span class="o">/</span> <span class="mi">2</span>
+		<span class="n">id_mid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">z</span><span class="o">&lt;</span><span class="n">z_mid</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">z_mid</span> <span class="o">=</span> <span class="n">z</span><span class="p">[</span><span class="n">id_mid</span><span class="p">]</span>
+		<span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">-</span> <span class="n">z_mid</span>
+		<span class="n">profile_df</span><span class="p">[</span><span class="s2">&quot;z&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">z</span>
+
+		<span class="c1"># shift distance such that z_mid is located at d = 0:</span>
+		<span class="n">d_mid</span> <span class="o">=</span> <span class="n">profile_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">id_mid</span><span class="p">][</span><span class="s2">&quot;d&quot;</span><span class="p">]</span>
+		<span class="n">d</span> <span class="o">=</span> <span class="n">profile_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;d&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">d_mid</span>
+		<span class="n">profile_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[:,</span> <span class="s2">&quot;d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span>
+
+		<span class="n">profiles_df</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">profile_df</span><span class="p">)</span>
+
+		<span class="c1"># save dfs to .csv (NOTE: not in splitprofiles/centerprofiles anymore!!)</span>
+		<span class="n">profile_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">path</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prof_name_cut</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">)</span>
+	
+	<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
+
+	<span class="k">if</span> <span class="n">view_profiles</span><span class="p">:</span>
+
+		<span class="c1"># make a quick and dirty map of dem</span>
+		<span class="n">raster</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">rasterpath</span><span class="p">)</span>
+		<span class="n">dem</span> <span class="o">=</span> <span class="n">raster</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">band_no</span><span class="p">)</span>
+		<span class="n">raster_bounds</span> <span class="o">=</span> <span class="n">raster</span><span class="o">.</span><span class="n">bounds</span>
+		<span class="n">raster_bounds</span> <span class="o">=</span> <span class="p">[</span>
+			<span class="n">raster_bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+			<span class="n">raster_bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+			<span class="n">raster_bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+			<span class="n">raster_bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="p">]</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">dem</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">raster_bounds</span><span class="p">,</span> <span class="n">vmin</span><span class="o">=</span><span class="n">dem_min</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">dem_max</span><span class="p">)</span>
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">profile</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">profiles_df</span><span class="p">):</span>
+			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">profile</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">profile</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+		<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+	<span class="k">return</span> <span class="p">(</span><span class="n">profiles_df</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span></div>
+
+
+<span class="c1"># function that returns the direction of steepest slope for each point specified</span>
+<span class="c1"># on a DEM</span>
+
+<div class="viewcode-block" id="calculate_aspect"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.calculate_aspect">[docs]</a><span class="k">def</span> <span class="nf">calculate_aspect</span><span class="p">(</span>
+	<span class="n">rasterpath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+	<span class="n">rc_points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+	<span class="n">band_no</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+	<span class="n">smooth_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+	<span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+	<span class="o">**</span><span class="n">rio_open_params</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]:</span>
+
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Calculate the local aspect of a list of points given in row-column format</span>
+<span class="sd">	(y, x) on a DEM in the same coordinate system.</span>
+
+<span class="sd">	Parameters:</span>
+<span class="sd">	-----------</span>
+<span class="sd">		rasterpath: str</span>
+<span class="sd">			Path to the DEM.</span>
+<span class="sd">		rc_points: list[tuple]</span>
+<span class="sd">			List of points stored as (y, x) tuples.</span>
+<span class="sd">		band_no: int</span>
+<span class="sd">			Band of the input raster to be interpreted as the DEM.</span>
+<span class="sd">		smooth_first: bool</span>
+<span class="sd">			Option to perform the azimuth calculation on a smoothed DEM.</span>
+<span class="sd">			This will generally lead to better results, unless the topography</span>
+<span class="sd">			is very complex.</span>
+<span class="sd">		method: str</span>
+<span class="sd">			Method used to calculate and interpolate the elevation values at the</span>
+<span class="sd">			wanted points. Can take any value permitted by</span>
+<span class="sd">			scipy.interpolate.interpn().</span>
+
+<span class="sd">	Returns:</span>
+<span class="sd">	--------</span>
+<span class="sd">		azimuths: list[tuple]</span>
+<span class="sd">			List of (y, x) tuples representing the vector pointing in the</span>
+<span class="sd">			direction of steepest descent, in the same order as rc_points.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">raster</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">rasterpath</span><span class="p">,</span> <span class="o">**</span><span class="n">rio_open_params</span><span class="p">)</span>
+	<span class="n">dem</span> <span class="o">=</span> <span class="n">raster</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">band_no</span><span class="p">)</span>
+	<span class="c1"># get spacings along x, y</span>
+	<span class="n">row_id</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dem</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+	<span class="n">col_id</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dem</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+
+	<span class="c1"># get y coordinate values for rows</span>
+	<span class="n">row_coords</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">xy</span><span class="p">(</span>
+		<span class="n">raster</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+		<span class="n">row_id</span><span class="p">,</span>
+		<span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+	<span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+	<span class="c1"># get x coordinate values for cols</span>
+	<span class="n">col_coords</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">xy</span><span class="p">(</span>
+		<span class="n">raster</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+		<span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">col_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">),</span>
+		<span class="n">col_id</span>
+	<span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">raster_coordinates</span> <span class="o">=</span> <span class="p">(</span><span class="n">row_coords</span><span class="p">,</span> <span class="n">col_coords</span><span class="p">)</span>
+	<span class="c1"># calculate gradient (aspect not needed in degree, rather a vector is</span>
+	<span class="c1"># sufficient).</span>
+
+	<span class="k">if</span> <span class="n">smooth_first</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Smoothing DEM for azimuth calculations&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;... &quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+		<span class="n">dem</span> <span class="o">=</span> <span class="n">gaussian_filter</span><span class="p">(</span><span class="n">dem</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;constant&quot;</span><span class="p">)</span>
+	<span class="n">drow</span><span class="p">,</span> <span class="n">dcol</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="n">dem</span><span class="p">,</span> <span class="n">row_coords</span><span class="p">,</span> <span class="n">col_coords</span><span class="p">)</span>
+
+	<span class="n">drow_int</span> <span class="o">=</span> <span class="n">interpn</span><span class="p">(</span>
+		<span class="n">raster_coordinates</span><span class="p">,</span>
+		<span class="n">drow</span><span class="p">,</span>
+		<span class="n">rc_points</span><span class="p">,</span>
+		<span class="n">method</span>
+	<span class="p">)</span>
+
+	<span class="n">dcol_int</span> <span class="o">=</span> <span class="n">interpn</span><span class="p">(</span>
+		<span class="n">raster_coordinates</span><span class="p">,</span>
+		<span class="n">dcol</span><span class="p">,</span>
+		<span class="n">rc_points</span><span class="p">,</span>
+		<span class="n">method</span>
+	<span class="p">)</span>
+
+	<span class="c1"># row, column format</span>
+	<span class="n">az</span> <span class="o">=</span> <span class="p">[(</span><span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">dcol_int</span><span class="p">,</span> <span class="n">drow_int</span><span class="p">)]</span>
+	<span class="c1"># normalize to len = 1</span>
+	<span class="n">len_az</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">az</span><span class="p">]</span>
+	<span class="n">norm_az</span> <span class="o">=</span> <span class="p">[(</span><span class="n">vect</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">len_az</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">vect</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="n">len_az</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> \
+		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">vect</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">az</span><span class="p">)]</span>
+
+	<span class="k">return</span> <span class="n">norm_az</span></div>
+
+<span class="c1"># function that takes a center point &amp; direction vector and extrapolates</span>
+<span class="c1"># n points in both directions with even spacing</span>
+<div class="viewcode-block" id="extrapolate_line_from_point"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.extrapolate_line_from_point">[docs]</a><span class="k">def</span> <span class="nf">extrapolate_line_from_point</span><span class="p">(</span>
+	<span class="n">centerpoint</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+	<span class="n">direction</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+	<span class="n">n_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+	<span class="n">spacing</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	Returns an array of points defining a profile line that can be fed into</span>
+<span class="sd">	sample_raster_at_points(). Input should be in row-column format (first</span>
+<span class="sd">	entry in tuple denotes the row or y position, second entry the col or x</span>
+<span class="sd">	position).</span>
+
+<span class="sd">	Parameters:</span>
+<span class="sd">	-----------</span>
+<span class="sd">		centerpoint: tuple</span>
+<span class="sd">			The point of origin. A profile will be constructed with n_points in</span>
+<span class="sd">			the direction of vector and -1*vector for a total of 2*n_points+1</span>
+<span class="sd">			points.</span>
+<span class="sd">		direction: tuple</span>
+<span class="sd">			A tuple defining the orientation of the profile line.</span>
+<span class="sd">			The line is constructed as new_points = centerpoint+a*direction.</span>
+<span class="sd">		n_points: int</span>
+<span class="sd">			Number of point to be returned in each direction of the centerpoint.</span>
+<span class="sd">		spacing: float</span>
+<span class="sd">			Spacing between any two neighbouring points.</span>
+
+<span class="sd">	Returns:</span>
+<span class="sd">	--------</span>
+<span class="sd">		rc_points: list[tuple]</span>
+<span class="sd">			An array of point tuples ordered along the first dimension.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+	<span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">direction</span><span class="p">)</span>
+	<span class="n">centerpoint</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">centerpoint</span><span class="p">)</span>
+
+	<span class="c1"># normalize direction vector to length spacing:</span>
+	<span class="n">direction</span> <span class="o">=</span> <span class="n">direction</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">direction</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span><span class="o">*</span><span class="n">spacing</span>
+	<span class="c1"># points in direction:</span>
+	<span class="c1"># first point is at centerpoint+direction, etc.</span>
+	<span class="n">points_1</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">centerpoint</span><span class="o">+</span><span class="n">direction</span><span class="o">*</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_points</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+
+	<span class="c1"># points in -1*direction:</span>
+	<span class="n">points_2</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">centerpoint</span><span class="o">-</span><span class="n">direction</span><span class="o">*</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_points</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
+	<span class="c1"># merge and sort by first value</span>
+	<span class="n">prof_points</span> <span class="o">=</span> <span class="n">points_1</span> <span class="o">+</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">centerpoint</span><span class="p">)]</span> <span class="o">+</span> <span class="n">points_2</span>
+	<span class="c1">#print(prof_points)</span>
+	<span class="n">prof_points</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">prof_points</span><span class="p">)</span>
+	<span class="c1">#</span>
+	<span class="k">return</span> <span class="n">prof_points</span></div>
+
+<span class="c1"># 2D raster interpolator with any method</span>
+<div class="viewcode-block" id="sample_raster_at_points"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.sample_raster_at_points">[docs]</a><span class="k">def</span> <span class="nf">sample_raster_at_points</span><span class="p">(</span>
+	<span class="n">rasterpath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+	<span class="n">rc_points</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+	<span class="n">band_no</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+	<span class="o">**</span><span class="n">rio_open_params</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	This function samples a raster that can be read by rasterio at the required</span>
+<span class="sd">	points using a user-defined interpolation method. Points should be given in</span>
+<span class="sd">	(row, column) / (y, x) format.</span>
+
+<span class="sd">	Parameters:</span>
+<span class="sd">	-----------</span>
+<span class="sd">		rasterpath: str</span>
+<span class="sd">			Relative path from current working directory (os.getcwd()) to the</span>
+<span class="sd">			raster file containing a DEM.</span>
+<span class="sd">		rc_points: np.array</span>
+<span class="sd">			1D array containing y,x coordinate tuples of the points where the</span>
+<span class="sd">			raster should be sampled at.</span>
+<span class="sd">		method: str</span>
+<span class="sd">			Interpolation method used by scipy.interpolate.interpn().</span>
+<span class="sd">			Default is linear interpolation.</span>
+<span class="sd">		band_no: int</span>
+<span class="sd">			Specifies the band of the raster that will be read as the DEM.</span>
+<span class="sd">		**rio_open_params:</span>
+<span class="sd">			Any parameters relating to rasterio.open()</span>
+
+<span class="sd">	Returns:</span>
+<span class="sd">	--------</span>
+<span class="sd">		rc_int: np.ndarray</span>
+<span class="sd">			List of elevation values corresponding to the points in rc_points.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="c1"># get coordinates of rio_raster rows, cols:</span>
+	<span class="n">raster</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">rasterpath</span><span class="p">,</span> <span class="o">**</span><span class="n">rio_open_params</span><span class="p">)</span>
+	<span class="n">dem</span> <span class="o">=</span> <span class="n">raster</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">band_no</span><span class="p">)</span>
+	<span class="n">row_id</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dem</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>
+	<span class="n">col_id</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dem</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])]</span>
+
+	<span class="c1"># get y coordinate values for rows</span>
+	<span class="n">row_coords</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">xy</span><span class="p">(</span>
+		<span class="n">raster</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+		<span class="n">row_id</span><span class="p">,</span>
+		<span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+	<span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+
+	<span class="c1"># get x coordinate values for cols</span>
+	<span class="n">col_coords</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">transform</span><span class="o">.</span><span class="n">xy</span><span class="p">(</span>
+		<span class="n">raster</span><span class="o">.</span><span class="n">transform</span><span class="p">,</span>
+		<span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">col_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">),</span>
+		<span class="n">col_id</span>
+	<span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+	
+	<span class="n">raster_coordinates</span> <span class="o">=</span> <span class="p">(</span><span class="n">row_coords</span><span class="p">,</span> <span class="n">col_coords</span><span class="p">)</span>
+
+	<span class="n">rc_int</span> <span class="o">=</span> <span class="n">interpn</span><span class="p">(</span>
+		<span class="n">raster_coordinates</span><span class="p">,</span>
+		<span class="n">dem</span><span class="p">,</span>
+		<span class="n">rc_points</span><span class="p">,</span>
+		<span class="n">method</span>
+	<span class="p">)</span>
+	<span class="k">return</span> <span class="n">rc_int</span></div>
+
+<div class="viewcode-block" id="load_profile_csvs"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.load_profile_csvs">[docs]</a><span class="k">def</span> <span class="nf">load_profile_csvs</span><span class="p">(</span>
+	<span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+	<span class="n">pandas_csv_dir</span><span class="p">:</span> <span class="nb">dir</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
+<span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">	load existing profile .csv files located in a splitprofiles\\centerprofiles</span>
+<span class="sd">	folder.</span>
+
+<span class="sd">	Parameters:</span>
+<span class="sd">	-----------</span>
+<span class="sd">		filepath: str</span>
+<span class="sd">			Path from current working directory to the directory containing</span>
+<span class="sd">			the .csv files to be loaded.</span>
+<span class="sd">		pandas_csv_dir: dir</span>
+<span class="sd">			Any arguments passed tp pandas.read_csv().</span>
+
+<span class="sd">	Returns:</span>
+<span class="sd">	--------</span>
+<span class="sd">		profiles: list</span>
+<span class="sd">			List of pd.DataFrame containing the profiles.</span>
+<span class="sd">		names: list</span>
+<span class="sd">			List of names corresponding to the profiles.</span>
+<span class="sd">	&quot;&quot;&quot;</span>
+
+	<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="si">}</span><span class="se">\\</span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2"> does not exist.&quot;</span><span class="p">)</span>
+	
+	<span class="n">loadpath</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="si">}</span><span class="se">\\</span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="se">\\</span><span class="s2">&quot;</span>
+	<span class="n">files</span> <span class="o">=</span> <span class="p">[</span>
+    	<span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">loadpath</span><span class="p">)</span>
+    	<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">loadpath</span><span class="p">,</span> <span class="n">f</span><span class="p">))</span>
+	<span class="p">]</span>
+	<span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
+	<span class="n">profiles</span> <span class="o">=</span> <span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">loadpath</span><span class="o">+</span><span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">pandas_csv_dir</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">]</span>
+
+	<span class="k">return</span> <span class="p">(</span><span class="n">profiles</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Lennart Grimm.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

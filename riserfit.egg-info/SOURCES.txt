@@ -1,0 +1,14 @@
+LICENSE
+README.md
+pyproject.toml
+riserfit/__init__.py
+riserfit/dem.py
+riserfit/diffusion.py
+riserfit/profiles.py
+riserfit/riser_maths.py
+riserfit/statistics.py
+riserfit.egg-info/PKG-INFO
+riserfit.egg-info/SOURCES.txt
+riserfit.egg-info/dependency_links.txt
+riserfit.egg-info/requires.txt
+riserfit.egg-info/top_level.txt

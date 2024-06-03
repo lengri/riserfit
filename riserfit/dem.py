@@ -71,7 +71,7 @@ class Constructor_Extractor:
 	) -> Self:
 		"""
 		Build profiles based on the provided data.
-  
+
 		Parameters:
 		-----------
 			None
@@ -79,8 +79,8 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The Constructor_Extractor instance.
-  		"""
+				The Constructor\_Extractor instance.
+		"""
 		p_lines = []
 		# center lines for both start_end_point true or false,
 		# the correct spacing should be chosen in the dem.py script.

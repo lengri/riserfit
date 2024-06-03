@@ -201,16 +201,16 @@ class RiserPlayground(Riser):
         Initializes a RiserPlayground instance. Because it inherits from
         Riser, any RiserPlayground instance has all attributes initialized
         during riserfit.Riser.__init__().
-        
+
         Parameters:
         -----------
             identifier: str
                 Identifier string of the RiserPlayground instance.
-        
+
         Returns:
         --------
             None
-        
+
         """
         super().__init__(
             [],
@@ -236,12 +236,12 @@ class RiserPlayground(Riser):
         Load d, z values from a Riser class instance.
 
         Parameters:
-        -----
+        -----------
             Riser_instance: class
                 An instance of the riserfit.Riser class.
 
         Returns:
-        -----
+        --------
             self: Self
                 The RiserPlayground instance.
 

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>riserfit.statistics &mdash; riserfit 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="author" title="About these documents" href="../../about.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            riserfit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">riserfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">riserfit.statistics</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for riserfit.statistics</h1><div class="highlight"><pre>
+<span></span><span class="c1"># for type hinting</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Self</span> <span class="c1"># pre python 3.11</span>
+
+<span class="kn">from</span> <span class="nn">.profiles</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">sklearn.linear_model</span> <span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interpn</span><span class="p">,</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="kn">import</span> <span class="n">f</span> <span class="k">as</span> <span class="n">f_dist</span> 
+<span class="kn">from</span> <span class="nn">skspatial.objects</span> <span class="kn">import</span> <span class="n">Line</span> <span class="c1"># reprojecting</span>
+<span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">block_diag</span>
+
+<span class="c1"># small numeric checker</span>
+<span class="k">def</span> <span class="nf">_is_numeric</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="sample_2d_grid"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.sample_2d_grid">[docs]</a><span class="k">def</span> <span class="nf">sample_2d_grid</span><span class="p">(</span>
+    <span class="n">p0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">p1</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">ax0_coords</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">ax1_coords</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+    <span class="n">extrapolate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Uses scipy.interpolate.interpn() to sample an established</span>
+<span class="sd">    2d grid with respect to two variables,</span>
+<span class="sd">    like kt and a. Basically a wrapper around interpn().</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        p0: float</span>
+<span class="sd">            Value along first axis (ax0) to be sampled.</span>
+<span class="sd">        p1: float </span>
+<span class="sd">            Value along second axis (ax1) to be sampled.</span>
+<span class="sd">        ax0_coords: ArrayLike</span>
+<span class="sd">            Coordinates of std_grid along axis 0. </span>
+<span class="sd">        ax1_coords: ArrayLike</span>
+<span class="sd">            Coordinates of std_grid along axis 1. </span>
+<span class="sd">        grid: np.ndarray</span>
+<span class="sd">            A 2d grid containing floats.</span>
+<span class="sd">        method: str</span>
+<span class="sd">            Interpolation method for scipy.interpolate.interpn().</span>
+<span class="sd">        extrapolate: bool</span>
+<span class="sd">            Whether to extrapolate from the original dataset.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        grid_value: float</span>
+<span class="sd">            The interpolated grid value at the sampled point .</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">grid_coords</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ax0_coords</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ax1_coords</span><span class="p">))</span>
+    <span class="n">sample_point</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p0</span><span class="p">,</span> <span class="n">p1</span><span class="p">])</span>
+
+    <span class="n">grid_value</span> <span class="o">=</span> <span class="n">interpn</span><span class="p">(</span>
+        <span class="n">grid_coords</span><span class="p">,</span> 
+        <span class="n">grid</span><span class="p">,</span> 
+        <span class="n">sample_point</span><span class="p">,</span> 
+        <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+        <span class="n">bounds_error</span><span class="o">=</span><span class="p">(</span><span class="ow">not</span> <span class="n">extrapolate</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">grid_value</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="linear_regression"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.linear_regression">[docs]</a><span class="k">def</span> <span class="nf">linear_regression</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> 
+    <span class="n">weights</span><span class="p">:</span> <span class="n">ArrayLike</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ignore</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the best fit slope and intercept for a set of</span>
+<span class="sd">    x and y coordinates, as well as the R2 correlation coefficient.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: ArrayLike</span>
+<span class="sd">            Independent coordinates.</span>
+<span class="sd">        y: ArrayLike</span>
+<span class="sd">            Dependent coordinates of length len(x).</span>
+<span class="sd">        weigths: ArrayLike</span>
+<span class="sd">            Weights of the data points.</span>
+<span class="sd">        ignore: list</span>
+<span class="sd">            List of indices to ignore for linear fitting and</span>
+<span class="sd">            correlation calculaten (e.g., list of outliers).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        slope: float</span>
+<span class="sd">            The slope of the best fit linear function.</span>
+<span class="sd">        intercept: float</span>
+<span class="sd">            The y-axis intercept of the best fit linear</span>
+<span class="sd">            function.</span>
+<span class="sd">        r2: float</span>
+<span class="sd">            The R2 correlation coefficient.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># x, y are lists, reshaped inside function</span>
+    <span class="c1"># ignore: array of indices to ignore</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ignore</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">ignore</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">ignore</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">weights</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># unweighted regression</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">y</span><span class="p">,</span> <span class="n">weights</span>
+    <span class="p">)</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">intercept</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">intercept_</span>
+    <span class="n">r2</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">y</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">slope</span><span class="p">,</span> <span class="n">intercept</span><span class="p">,</span> <span class="n">r2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="calculate_lin_reg_confidence_interval"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.calculate_lin_reg_confidence_interval">[docs]</a><span class="k">def</span> <span class="nf">calculate_lin_reg_confidence_interval</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">slope</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">intercept</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Confidence interval around linear regression. For a detailed</span>
+<span class="sd">    discussion of the mathmatics, see chapter 5 of Neter et al., </span>
+<span class="sd">    Applied Linear Regression.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.array</span>
+<span class="sd">            The independent variable.</span>
+<span class="sd">        y: np.array</span>
+<span class="sd">            The dependent variable.</span>
+<span class="sd">        slope: float</span>
+<span class="sd">            The slope of the linear regression line.</span>
+<span class="sd">        intercept: float</span>
+<span class="sd">            The intercept of the linear regression line.</span>
+<span class="sd">        alpha: float</span>
+<span class="sd">            The alpha value of the confidence interval. Must be</span>
+<span class="sd">            in interval (0, 1).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        lower_bound: np.array</span>
+<span class="sd">            Lower uncertainty bound at each y.</span>
+<span class="sd">        upper_bound: np.array</span>
+<span class="sd">            Upper uncertainty bound at each y.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">b0</span> <span class="o">=</span> <span class="n">intercept</span> 
+    <span class="n">b1</span> <span class="o">=</span> <span class="n">slope</span>
+    <span class="n">y_hat</span> <span class="o">=</span> <span class="n">b0</span><span class="o">+</span><span class="n">b1</span><span class="o">*</span><span class="n">x</span> 
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">x_mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">MSE</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">y</span><span class="o">-</span><span class="n">y_hat</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">sqrt_f_dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+        <span class="mi">2</span><span class="o">*</span><span class="n">f_dist</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">alpha</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">n</span><span class="o">-</span><span class="mi">2</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">s_y_hat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">MSE</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">n</span> <span class="o">+</span> <span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">x_mean</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">x_sum</span><span class="p">))</span>
+
+    <span class="n">lower_bound</span> <span class="o">=</span> <span class="n">y_hat</span> <span class="o">-</span> <span class="n">sqrt_f_dist</span><span class="o">*</span><span class="n">s_y_hat</span>
+    <span class="n">upper_bound</span> <span class="o">=</span> <span class="n">y_hat</span> <span class="o">+</span> <span class="n">sqrt_f_dist</span><span class="o">*</span><span class="n">s_y_hat</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">lower_bound</span><span class="p">,</span> <span class="n">upper_bound</span><span class="p">)</span></div>
+
+<span class="c1"># playground function to test influence of noise etc.</span>
+<div class="viewcode-block" id="RiserPlayground"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground">[docs]</a><span class="k">class</span> <span class="nc">RiserPlayground</span><span class="p">(</span><span class="n">Riser</span><span class="p">):</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class inherits methods from riserfit.Riser class. </span>
+<span class="sd">    It contains additional methods to perfom various Monte Carlo-style</span>
+<span class="sd">    analyses of noise and other uncertainties. </span>
+<span class="sd">    It can copy the data available in a Riser instance, </span>
+<span class="sd">    or generate synthetic profiles.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span> <span class="c1"># only initialize all the attributes to be filled</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">identifier</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initializes a RiserPlayground instance. Because it inherits from</span>
+<span class="sd">        Riser, any RiserPlayground instance has all attributes initialized</span>
+<span class="sd">        during riserfit.Riser.__init__().</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            identifier: str</span>
+<span class="sd">                Identifier string of the RiserPlayground instance.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="p">[],</span>
+            <span class="p">[],</span>
+            <span class="p">[],</span>  <span class="c1"># elevations</span>
+            <span class="p">[],</span>  <span class="c1"># along profile distances</span>
+            <span class="p">[],</span>  <span class="c1"># profile name</span>
+            <span class="n">identifier</span> <span class="c1"># identify string</span>
+        <span class="p">)</span>
+
+        <span class="c1">#########################################</span>
+        <span class="c1"># Attributes that are assigned later on #</span>
+        <span class="c1">#########################################</span>
+
+        <span class="c1"># add_gaussian_z_noise() or add_uniform_z_noise()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="RiserPlayground.load_profiles_from_Riser"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.load_profiles_from_Riser">[docs]</a>    <span class="k">def</span> <span class="nf">load_profiles_from_Riser</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">Riser_instance</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load d, z values from a Riser class instance.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            Riser_instance: class</span>
+<span class="sd">                An instance of the riserfit.Riser class.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">attribute_keys</span> <span class="o">=</span> <span class="n">Riser_instance</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">attribute_keys</span><span class="p">:</span>
+            <span class="n">attribute</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Riser_instance</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="RiserPlayground.create_profiles_from_parameters"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.create_profiles_from_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">create_profiles_from_parameters</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">d</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+        <span class="n">kt</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">],</span>
+        <span class="n">a</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">],</span>
+        <span class="n">b</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">],</span> 
+        <span class="n">theta</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">],</span> 
+        <span class="n">d_off</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">z_off</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">names</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">uniform_d</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create riser profiles based on user-defined parameters. </span>
+<span class="sd">        These can be supplied either as single numbers or lists.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            d: list</span>
+<span class="sd">                Distance values at which z are to be calculated.</span>
+<span class="sd">                If uniform_d is False, interpreted as a nested list.</span>
+<span class="sd">            kt: float | list</span>
+<span class="sd">                Diffusion age(s) for each profile.</span>
+<span class="sd">            a: float | list</span>
+<span class="sd">                Riser height(s) for each profile.</span>
+<span class="sd">            b: float | list</span>
+<span class="sd">                Riser far field slope(s) for each profile.</span>
+<span class="sd">            theta: float | list</span>
+<span class="sd">                Initial riser slope(s) for each profile.</span>
+<span class="sd">            d_off: float | list</span>
+<span class="sd">                Shift(s) applied to d after elevations are calculated.</span>
+<span class="sd">            z_off: float | list</span>
+<span class="sd">                Shift(s) applied to z after elevations are calculated.</span>
+<span class="sd">            names: str | list</span>
+<span class="sd">                Name(s) for each riser.</span>
+<span class="sd">            uniform_d: bool</span>
+<span class="sd">                Defines the role of d: If True, d is interpreted as a </span>
+<span class="sd">                single non-nested list or array used as distance values.</span>
+<span class="sd">                If False, interpreted as a nested list wherein each</span>
+<span class="sd">                element defines a unique distance array used for creating</span>
+<span class="sd">                riser profiles.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check if any of the parameters are numeric </span>
+        <span class="c1"># (can be converted to float)</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">d_off</span><span class="p">,</span> <span class="n">z_off</span><span class="p">]</span>
+        <span class="n">par_numeric</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">_is_numeric</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">par_numeric</span><span class="o">==</span><span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">uniform_d</span><span class="p">:</span>
+
+            <span class="c1"># all inputs are numbers, create profile and end</span>
+
+            <span class="n">z</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span>
+            <span class="p">)</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="n">d_off</span><span class="p">]</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="p">[</span><span class="n">z</span> <span class="o">+</span> <span class="n">z_off</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;profile0&quot;</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="c1"># end routine</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># some parameters are floats, some are lists...</span>
+            <span class="c1"># duplicate the floats to same length as the lists</span>
+
+            <span class="c1"># check if all lists have the same length:</span>
+            <span class="n">list_param</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">pn</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">par_numeric</span><span class="p">)</span>
+                 <span class="k">if</span> <span class="ow">not</span> <span class="n">pn</span><span class="p">]</span>
+            <span class="n">len_list_param</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">list_p</span><span class="p">)</span> <span class="k">for</span> <span class="n">list_p</span> <span class="ow">in</span> <span class="n">list_param</span><span class="p">]</span>
+
+            <span class="c1"># check if uniform_d is True:</span>
+
+            <span class="k">if</span> <span class="n">uniform_d</span><span class="p">:</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">*</span><span class="n">len_list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> 
+            <span class="c1"># add ds to len_list_param and list_param</span>
+            <span class="n">list_param</span> <span class="o">=</span> <span class="p">[</span><span class="n">ds</span><span class="p">]</span> <span class="o">+</span> <span class="n">list_param</span> 
+
+            <span class="n">len_list_param</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">)]</span> <span class="o">+</span> <span class="n">len_list_param</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">len_list_param</span> <span class="o">!=</span> <span class="n">len_list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Input arguments do not have same lengths&quot;</span><span class="p">)</span>
+
+            <span class="n">out_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="c1"># convert params that are not list to lists...</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">is_num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">par_numeric</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">is_num</span><span class="p">:</span>
+                    <span class="n">p_l</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">out_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_l</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span> 
+                    <span class="n">out_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c1"># append d to out_list:</span>
+            <span class="n">out_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="n">out_list</span>
+
+        <span class="c1"># default: use number progression as name</span>
+        <span class="k">if</span> <span class="n">names</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">out_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">names</span><span class="o">+</span><span class="s2">&quot;p&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out_names</span> <span class="o">=</span> <span class="n">names</span>
+        <span class="c1"># check if names has correct length (in case user supplied)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_names</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Length of &#39;names&#39; does not equal other parameters&quot;</span><span class="p">)</span>
+
+        <span class="c1"># construct profiles</span>
+        <span class="n">z_list_shifted</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">d_list_shifted</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">out_names</span><span class="p">):</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
+                <span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> 
+                <span class="n">out_list</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">d</span> <span class="o">=</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">5</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">+</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">6</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">z_list_shifted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+            <span class="n">d_list_shifted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d_list_shifted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z_list_shifted</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">out_names</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="RiserPlayground.add_gaussian_z_noise"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.add_gaussian_z_noise">[docs]</a>    <span class="k">def</span> <span class="nf">add_gaussian_z_noise</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.</span><span class="p">,</span>
+        <span class="n">cell_shift</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+        <span class="n">mean_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+        <span class="n">std_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add noise specified by a gaussian distribution N(mean_z, std_z)</span>
+<span class="sd">        to each profile&#39;s elevation. If this function is called multiple</span>
+<span class="sd">        times for the same riserfit.RiserPlayground() instance, noise</span>
+<span class="sd">        will be cummulative.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            dx: float</span>
+<span class="sd">                Spatial resolution of the gaussian noise. If None,</span>
+<span class="sd">                a noise value is calculated for each point of data.</span>
+<span class="sd">                Otherwise, it is calculated at</span>
+<span class="sd">                np.arange(self.d[i].min()+cell_shift, self.d[i].max(),dx)</span>
+<span class="sd">                and interpolated to match self.d[i].</span>
+<span class="sd">            mean_z: float</span>
+<span class="sd">                The mean of the gaussian distribution.</span>
+<span class="sd">            std_z: float</span>
+<span class="sd">                The standard deviation of the gaussian distribution.</span>
+<span class="sd">            method: str</span>
+<span class="sd">                The interpolation method used if dx != None.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)):</span>
+            
+            <span class="c1"># if dx is none, calculate noise directly</span>
+            <span class="k">if</span> <span class="n">dx</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">,</span> <span class="n">std_z</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># calculate positions for noise</span>
+                <span class="n">d_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">+</span><span class="n">cell_shift</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">)</span>
+                <span class="c1"># calculate corresponding noise values</span>
+                <span class="n">z_noise_dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">,</span> <span class="n">std_z</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">d_noise</span><span class="o">.</span><span class="n">shape</span>
+                <span class="p">)</span>
+                <span class="n">intfun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span>
+                    <span class="n">d_noise</span><span class="p">,</span> <span class="n">z_noise_dx</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">kind</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="n">z_noise_dx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">z_noise_dx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">intfun</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+                
+            <span class="c1"># add noise to original elevations</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">z</span><span class="o">+</span><span class="n">z_noise</span>
+            
+        <span class="k">return</span> <span class="bp">self</span></div>
+        
+<div class="viewcode-block" id="RiserPlayground.best_fit_gaussian_z_noise"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.best_fit_gaussian_z_noise">[docs]</a>    <span class="k">def</span> <span class="nf">best_fit_gaussian_z_noise</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="n">mean_z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.17</span><span class="p">,</span>
+        <span class="n">std_z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.28</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">best_linear_fit_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">calc_uncert</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">kt_uncert_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add noise specified by a gaussian distribution N(mean_z, std_z)</span>
+<span class="sd">        to each profile. If mean_z, std_z may be provided as iterables with</span>
+<span class="sd">        one entry for each profile. This function can be called multiple</span>
+<span class="sd">        times in a row and will add noise each time to the original profile</span>
+<span class="sd">        elevation values.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            dx: float </span>
+<span class="sd">                Spatial resolution of the gaussian noise. If None, </span>
+<span class="sd">                noise is calculated for each data point. If float,</span>
+<span class="sd">                noise is calculated along a regular grid and </span>
+<span class="sd">                interpolated to the data points.</span>
+<span class="sd">            mean_z: float | list</span>
+<span class="sd">                Mean(s) of the gaussian distribution(s) describing the</span>
+<span class="sd">                level of gaussian noise added to each sample.</span>
+<span class="sd">            std_z: float | list</span>
+<span class="sd">                Standard deviation(s) of the gaussian distribution(s)</span>
+<span class="sd">                describing the noise added to each sample.</span>
+<span class="sd">            method: str</span>
+<span class="sd">                Interpolation method used if dx != None.</span>
+<span class="sd">            best_linear_fit_dict: dict</span>
+<span class="sd">                Keyword dictionary passed to </span>
+<span class="sd">                riserfit.Riser.compute_best_linear_diffusion_fit().</span>
+<span class="sd">            calc_uncert: bool</span>
+<span class="sd">                Calculate the kt uncertainties each iteration.</span>
+<span class="sd">            kt_uncert_dict: dict</span>
+<span class="sd">                Keywords to pass to calculate_kt_uncertainty().</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check if self.no_noise_z is empty, if not, </span>
+        <span class="c1"># use that one as z</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># try converting input mean_z, std_z to float</span>
+        <span class="c1"># if works, it is a single number -&gt; create filled array</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">mean_z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_z</span><span class="p">)</span>
+            <span class="n">mean_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">*</span><span class="n">mean_z</span>
+
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mean_z</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(mean_z) not equal to number of profiles&quot;</span><span class="p">)</span>
+
+        <span class="c1"># the same for std_z</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">std_z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">std_z</span><span class="p">)</span>
+            <span class="n">std_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">*</span><span class="n">std_z</span>
+
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">std_z</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(mean_z) not equal to number of profiles&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+
+            <span class="k">if</span> <span class="n">dx</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># calculate noise array of length self.d[i]</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">std_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="p">)</span>
+                
+            <span class="k">if</span> <span class="n">dx</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># noise in dx, interpolate at self.d[i]</span>
+                <span class="n">dx_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                    <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span> 
+                <span class="p">)</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">std_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">dx_array</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">intfun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span>
+                    <span class="n">dx_array</span><span class="p">,</span> <span class="n">z_noise</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="n">z_noise</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">z_noise</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">intfun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c1"># add noise to z:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="n">z_noise</span> 
+
+        <span class="c1"># call compute_best_linear_diffusion_fit</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_best_linear_diffusion_fit</span><span class="p">(</span><span class="o">**</span><span class="n">best_linear_fit_dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_d_z_offsets</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">calc_uncert</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_kt_uncertainty</span><span class="p">(</span><span class="o">**</span><span class="n">kt_uncert_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span> </div>
+    
+<div class="viewcode-block" id="RiserPlayground.best_nonlin_fit_gaussian_z_noise"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.best_nonlin_fit_gaussian_z_noise">[docs]</a>    <span class="k">def</span> <span class="nf">best_nonlin_fit_gaussian_z_noise</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="n">mean_z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.17</span><span class="p">,</span>
+        <span class="n">std_z</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.28</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
+        <span class="n">best_linear_fit_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">best_nonlin_fit_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{},</span>
+        <span class="n">calc_uncert</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add noise specified by a gaussian distribution N(mean_z, std_z)</span>
+<span class="sd">        to each profile. If mean_z, std_z may be provided as iterables with</span>
+<span class="sd">        one entry for each profile. If this function is called multiple times</span>
+<span class="sd">        in sequence, it will add the noise to the original elevations.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            dx: float </span>
+<span class="sd">                Spatial resolution of the gaussian noise. If None, </span>
+<span class="sd">                noise is calculated for each data point. If float,</span>
+<span class="sd">                noise is calculated along a regular grid and </span>
+<span class="sd">                interpolated to the data points.</span>
+<span class="sd">            mean_z: float | list</span>
+<span class="sd">                Mean(s) of the gaussian distribution(s) describing the</span>
+<span class="sd">                level of gaussian noise added to each sample.</span>
+<span class="sd">            std_z: float | list</span>
+<span class="sd">                Standard deviation(s) of the gaussian distribution(s)</span>
+<span class="sd">                describing the noise added to each sample.</span>
+<span class="sd">            method: str</span>
+<span class="sd">                Interpolation method used if dx != None.</span>
+<span class="sd">            best_linear_fit_dict: dict</span>
+<span class="sd">                Keyword dictionary passed to </span>
+<span class="sd">                riserfit.Riser.compute_best_linear_diffusion_fit()</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check if self.no_noise_z is empty, if not, </span>
+        <span class="c1"># use that one as z</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">no_noise_z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># try converting input mean_z, std_z to float</span>
+        <span class="c1"># if works, it is a single number -&gt; create filled array</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">mean_z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_z</span><span class="p">)</span>
+            <span class="n">mean_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">*</span><span class="n">mean_z</span>
+
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mean_z</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(mean_z) not equal to number of profiles&quot;</span><span class="p">)</span>
+
+        <span class="c1"># the same for std_z</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">std_z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">std_z</span><span class="p">)</span>
+            <span class="n">std_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">*</span><span class="n">std_z</span>
+
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">std_z</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(mean_z) not equal to number of profiles&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+
+            <span class="k">if</span> <span class="n">dx</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># calculate noise array of length self.d[i]</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">std_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                <span class="p">)</span>
+                
+            <span class="k">if</span> <span class="n">dx</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># noise in dx, interpolate at self.d[i]</span>
+                <span class="n">dx_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                    <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span> 
+                <span class="p">)</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">mean_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">std_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">dx_array</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">intfun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span>
+                    <span class="n">dx_array</span><span class="p">,</span> <span class="n">z_noise</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="n">z_noise</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">z_noise</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="p">)</span>
+                <span class="n">z_noise</span> <span class="o">=</span> <span class="n">intfun</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+            <span class="c1"># add noise to z:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">+</span><span class="n">z_noise</span> 
+
+        <span class="c1"># call compute_best_linear_diffusion_fit</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_best_linear_diffusion_fit</span><span class="p">(</span><span class="o">**</span><span class="n">best_linear_fit_dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">apply_d_z_offsets</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compute_best_nonlinear_diffusion_fit</span><span class="p">(</span><span class="o">**</span><span class="n">best_nonlin_fit_dict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">calc_uncert</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_nonlin_t_uncertainty</span><span class="p">(</span><span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+    
+<div class="viewcode-block" id="RiserPlayground.downsample_upsample_profiles"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.downsample_upsample_profiles">[docs]</a>    <span class="k">def</span> <span class="nf">downsample_upsample_profiles</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">resample_dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.</span><span class="p">,</span>
+        <span class="n">cell_shift</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cubic&quot;</span><span class="p">,</span>
+        <span class="n">add_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">mean_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+        <span class="n">std_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Basic simulation of constructing a DEM from averaged binned </span>
+<span class="sd">        elevations, and then resampling these binned values back</span>
+<span class="sd">        to the original resolution. </span>
+<span class="sd">        Noise can be added onto the down-sampled DEM resolution cells.        </span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            resample_dx: float</span>
+<span class="sd">                Grid size of the simulated DEM, in meters.</span>
+<span class="sd">            cell_shift: float</span>
+<span class="sd">                Offset at beginning of profile. Prevents</span>
+<span class="sd">                smaller bins at the beginning and may</span>
+<span class="sd">                introduce asymmetry in the resampled profile.</span>
+<span class="sd">                Value should be &gt;= 0, or unaccounted </span>
+<span class="sd">                boundary effects may occur.</span>
+<span class="sd">            method: str</span>
+<span class="sd">                Interpolation method for resampling. Must be</span>
+<span class="sd">                accepted by scipy.interpolate.interp1d().</span>
+<span class="sd">            add_noise: bool</span>
+<span class="sd">                Option to add noise to the downsampled profile.</span>
+<span class="sd">            mean_z: float</span>
+<span class="sd">                Mean value of the vertical noise.</span>
+<span class="sd">            std_z: float</span>
+<span class="sd">                Standard deviation of the vertical noise.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The RiserPlayground instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">z_downsample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
+        <span class="n">d_downsample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
+        <span class="c1"># loop that creates an array of downsampled</span>
+        <span class="c1"># z profiles</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">z</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">)):</span>
+            
+            <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">d</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+            
+            <span class="c1"># get the minimum (shifted) DEM cell center allowed:</span>
+            <span class="n">D0</span> <span class="o">=</span> <span class="nb">min</span> <span class="o">+</span> <span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">cell_shift</span>
+
+            <span class="c1"># construct all cell centers</span>
+            <span class="n">d_DEM</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                <span class="n">D0</span><span class="p">,</span> <span class="nb">max</span><span class="o">-</span><span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="n">cell_shift</span><span class="p">,</span> <span class="n">resample_dx</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># construct the partitioned matrix M, which contains the</span>
+            <span class="c1"># downscaling kernel...</span>
+            <span class="c1"># | K                    |</span>
+            <span class="c1"># |     K            0   |</span>
+            <span class="c1"># |         K            |</span>
+            <span class="c1"># |    0        ...      |</span>
+            <span class="c1"># |                    K |</span>
+            <span class="c1"># each K may be differently sized and depends on the </span>
+            <span class="c1"># number of points around each d_DEM[i] satisfying</span>
+            <span class="c1"># d_DEM[i]-resample_dx/2 &lt;= d_i &lt; d_DEM[i]+resample_dx/2.</span>
+            
+            <span class="c1"># for each d_DEM, calculate the kernel size...</span>
+            <span class="n">K_sizes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">d_DEM</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span><span class="p">)</span> <span class="c1"># array of m</span>
+
+            <span class="n">z_valid_packed</span> <span class="o">=</span> <span class="p">[]</span> <span class="c1"># has to be expanded dynamically, since</span>
+            <span class="c1"># size is not known beforehand.</span>
+            
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="n">ddem</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">d_DEM</span><span class="p">):</span>
+                <span class="nb">id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">d</span> <span class="o">&gt;=</span> <span class="n">ddem</span><span class="o">-</span><span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+                    <span class="p">(</span><span class="n">d</span> <span class="o">&lt;</span> <span class="n">ddem</span><span class="o">+</span><span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">K_sizes</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="nb">id</span><span class="p">])</span>
+                <span class="n">z_valid_packed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z</span><span class="p">[</span><span class="nb">id</span><span class="p">])</span>
+                
+            <span class="n">z_valid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">z_packed</span> <span class="ow">in</span> <span class="n">z_valid_packed</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">z_packed</span><span class="p">]</span>
+            <span class="p">)</span>
+
+            <span class="n">K_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">m</span><span class="p">,</span><span class="n">m</span><span class="p">),</span> <span class="mi">1</span><span class="o">/</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">K_sizes</span><span class="p">]</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="n">block_diag</span><span class="p">(</span><span class="o">*</span><span class="n">K_list</span><span class="p">)</span>
+            
+            <span class="c1"># perform convolution and take only one elevation value per cell</span>
+            <span class="c1"># (does not matter which one we take...)</span>
+            <span class="n">z_DEM_dense</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">z_valid</span><span class="p">)</span>
+            
+            <span class="c1"># extract exactly one elevation value per cell...</span>
+            <span class="n">cell_single_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                <span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">K_sizes</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;int&quot;</span>
+            <span class="p">)</span>
+            <span class="n">z_DEM</span> <span class="o">=</span> <span class="n">z_DEM_dense</span><span class="p">[</span><span class="n">cell_single_id</span><span class="p">]</span>               
+
+            <span class="n">z_downsample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_DEM</span>
+            <span class="n">d_downsample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">d_DEM</span>
+            
+            <span class="c1"># if noise is to be added, do it here</span>
+            <span class="k">if</span> <span class="n">add_noise</span><span class="p">:</span>
+                <span class="n">noise_z</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+                    <span class="n">loc</span><span class="o">=</span><span class="n">mean_z</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">std_z</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">d_DEM</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">z_downsample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="n">noise_z</span>
+
+        <span class="c1"># now, up-sample the profile back to its original resolution.</span>
+        <span class="n">z_upsample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">d_DEM</span><span class="p">,</span> <span class="n">z_DEM</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">d_downsample</span><span class="p">,</span> <span class="n">z_downsample</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">)):</span>
+            <span class="n">intfun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span>
+                <span class="n">d_DEM</span><span class="p">,</span> <span class="n">z_DEM</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="n">z_DEM</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">z_DEM</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">z_upsample</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">intfun</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">z_upsample</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div></div>
+
+<div class="viewcode-block" id="calculate_confidence_interval"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.calculate_confidence_interval">[docs]</a><span class="k">def</span> <span class="nf">calculate_confidence_interval</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> 
+    <span class="n">p</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span> 
+    <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.158</span><span class="p">,</span> 
+    <span class="n">ub</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.840</span><span class="p">,</span>
+    <span class="n">mode_center</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates a confidence interval based on a non-parametric KDE.</span>
+<span class="sd">    If mode_center == False, lb is interpreted as</span>
+<span class="sd">    integral_{-infty}^lb_x KDE = lb, and ub as </span>
+<span class="sd">    integral_{-infty}^ub_x KDE = ub.</span>
+<span class="sd">    If mode_center == True, lb defines the area under the KDE between </span>
+<span class="sd">    lb_x and the mode. ub defines the area between the mode and ub_x.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.array</span>
+<span class="sd">            x values corresponding to known KDE values.</span>
+<span class="sd">        p: np.array</span>
+<span class="sd">            KDE values.</span>
+<span class="sd">        lb: float</span>
+<span class="sd">            Either lower bound of the cumulative KDE, or the area between</span>
+<span class="sd">            lb_x and mode.</span>
+<span class="sd">        ub: float</span>
+<span class="sd">            Either upper bound of the cumultive KDE, or the area between</span>
+<span class="sd">            mode and ub_x.</span>
+<span class="sd">        mode_center: bool</span>
+<span class="sd">            If mode_center == False, lb is interpreted as</span>
+<span class="sd">            integral_{-infty}^lb_x KDE = lb, and ub as </span>
+<span class="sd">            integral_{-infty}^ub_x KDE = ub.</span>
+<span class="sd">            If mode_center == True, lb defines the area under the KDE </span>
+<span class="sd">            between lb_x and the mode. ub defines the area between </span>
+<span class="sd">            the mode and ub_x.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        lb_x: float</span>
+<span class="sd">            The lower bound.</span>
+<span class="sd">        ub_x: float</span>
+<span class="sd">            The upper bound.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="n">dx</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">-</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">cpdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">p</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mode_center</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+
+        <span class="n">id_mode</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+        <span class="n">cpdf_mode</span> <span class="o">=</span> <span class="n">cpdf</span><span class="p">[</span><span class="n">id_mode</span><span class="p">]</span>
+
+        <span class="n">id_lb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cpdf</span><span class="o">&lt;=</span><span class="p">(</span><span class="n">cpdf_mode</span><span class="o">-</span><span class="n">lb</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">list</span><span class="p">(</span><span class="n">id_lb</span><span class="p">)</span> <span class="o">==</span> <span class="p">[]:</span> <span class="c1"># ensure that bound is &gt;= 0.</span>
+            <span class="n">id_lb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">id_lb</span> <span class="o">=</span> <span class="n">id_lb</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">id_ub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cpdf</span><span class="o">&gt;=</span><span class="p">(</span><span class="n">cpdf_mode</span><span class="o">+</span><span class="n">ub</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">lb_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">id_lb</span><span class="p">]</span>
+        <span class="n">ub_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">id_ub</span><span class="p">]</span>
+    
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">lb_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cpdf</span><span class="o">&lt;=</span><span class="n">lb</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+        <span class="n">ub_x</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">cpdf</span><span class="o">&lt;=</span><span class="n">ub</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">lb_x</span><span class="p">,</span> <span class="n">ub_x</span><span class="p">)</span></div>
+
+
+
+
+
+    
+    
+    
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Lennart Grimm.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

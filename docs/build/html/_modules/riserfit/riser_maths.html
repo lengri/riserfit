@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>riserfit.riser_maths &mdash; riserfit 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="author" title="About these documents" href="../../about.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            riserfit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">riserfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">riserfit.riser_maths</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for riserfit.riser_maths</h1><div class="highlight"><pre>
+<span></span><span class="c1"># type hints</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Self</span> <span class="c1"># pre python 3.11</span>
+
+<span class="c1">#system stuff</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">warnings</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="c1"># data analysis, managing and calculations</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">skspatial.objects</span> <span class="kn">import</span> <span class="n">Line</span> <span class="c1"># reprojecting</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span> 
+
+<span class="c1"># imports for (non-)linear diffusion fitting</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="k">as</span> <span class="nn">sp</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="kn">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">scipy.special</span> <span class="kn">import</span> <span class="n">erf</span>
+
+<span class="c1"># small numeric checker</span>
+<span class="k">def</span> <span class="nf">_is_numeric</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> <span class="k">return</span> <span class="kc">False</span> 
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+<span class="c1">#####################################</span>
+<span class="c1">## Part 1: Geometries and profiles ##</span>
+<span class="c1">#####################################</span>
+
+<span class="c1"># profile distance calculator, because this appears way too often </span>
+<span class="c1"># in the code....</span>
+<div class="viewcode-block" id="xy_distances"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.xy_distances">[docs]</a><span class="k">def</span> <span class="nf">xy_distances</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span> 
+    <span class="n">y</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Small function to compute the euclidian distance between equal</span>
+<span class="sd">    length arrays of x and y coordinates.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: ArrayLike</span>
+<span class="sd">            Coordinates in x direction.</span>
+<span class="sd">        y: ArrayLike</span>
+<span class="sd">            Coordinates in y direction.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        d: np.ndarray</span>
+<span class="sd">            Cumulative distances starting at 0.</span>
+<span class="sd">        dd: np.ndarray</span>
+<span class="sd">            Differential distances.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="c1"># check that x, y are equal length:</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;x, y do not have same dimensions!&quot;</span><span class="p">)</span>
+
+    <span class="c1"># calculate differential distances</span>
+    <span class="n">dd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+
+    <span class="c1"># vectorized euclidian distances</span>
+    <span class="n">dd</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">-</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">-</span><span class="n">y</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span>
+    <span class="p">)</span>
+
+    <span class="c1"># cumulative sum</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">dd</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">dd</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="least_square_reproject"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.least_square_reproject">[docs]</a><span class="k">def</span> <span class="nf">least_square_reproject</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes best fit line and reprojects all points onto that</span>
+<span class="sd">    line.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: ArrayLike</span>
+<span class="sd">            Coordinates in x direction.</span>
+<span class="sd">        y: ArrayLike</span>
+<span class="sd">            Coordinates in y dirextion.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        x_out: np.ndarray</span>
+<span class="sd">            Reprojected coordinates in x direction.</span>
+<span class="sd">        y_out: np.ndarray</span>
+<span class="sd">            Reprojected coordinates in y direction.</span>
+<span class="sd">        d_out: np.ndarray</span>
+<span class="sd">            Re-calculated distances for the new coordinates.</span>
+<span class="sd">        dd_out: np.ndarray</span>
+<span class="sd">            Re-calculated diff. distances for the new</span>
+<span class="sd">            coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">P0</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">a</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="n">b</span><span class="p">]</span>
+    <span class="n">P1</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">a</span> <span class="o">*</span> <span class="n">x</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="n">b</span><span class="p">]</span>
+
+    <span class="n">line</span> <span class="o">=</span> <span class="n">Line</span><span class="o">.</span><span class="n">from_points</span><span class="p">(</span><span class="n">point_a</span><span class="o">=</span><span class="n">P0</span><span class="p">,</span> <span class="n">point_b</span><span class="o">=</span><span class="n">P1</span><span class="p">)</span>
+    <span class="n">projX</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">projY</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">ii</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+
+        <span class="n">projPoint</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">project_point</span><span class="p">((</span><span class="n">x</span><span class="p">[</span><span class="n">ii</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">ii</span><span class="p">]))</span>
+        <span class="n">projX</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">projPoint</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">projY</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">projPoint</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">x_out</span> <span class="o">=</span> <span class="n">projX</span>
+    <span class="n">y_out</span> <span class="o">=</span> <span class="n">projY</span>
+
+    <span class="c1"># re-calculate distances:</span>
+    <span class="n">d_out</span><span class="p">,</span> <span class="n">dd_out</span> <span class="o">=</span> <span class="n">xy_distances</span><span class="p">(</span><span class="n">x_out</span><span class="p">,</span> <span class="n">y_out</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">x_out</span><span class="p">,</span> <span class="n">y_out</span><span class="p">,</span> <span class="n">d_out</span><span class="p">,</span> <span class="n">dd_out</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="analytical_profile"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.analytical_profile">[docs]</a><span class="k">def</span> <span class="nf">analytical_profile</span><span class="p">(</span>
+    <span class="n">d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">kt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e-10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to compute elevation of a riser profile</span>
+<span class="sd">    defined by kt, a, b and theta along points x. Uses the equation proposed by</span>
+<span class="sd">    Hanks and Andrews (1989), based on linear diffusion assumptions.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        d: np.ndarray</span>
+<span class="sd">            Points where the elevations of the scarp are to be calculated</span>
+<span class="sd">        kt: float</span>
+<span class="sd">            Diffusion age of the scarp.</span>
+<span class="sd">        a: float</span>
+<span class="sd">            Half the initial riser height (at kt=0).</span>
+<span class="sd">        b: float</span>
+<span class="sd">            Far field slope of the scarp.</span>
+<span class="sd">        theta: float</span>
+<span class="sd">            Initial riser gradient (at kt=0).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        h: np.ndarray</span>
+<span class="sd">            Array of elevations for the riser profile.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># TODO: Add check for very low values? maybe defined by epsilon?</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">kt</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>  <span class="c1"># scipy seems to pass type(kt) == list sometimes?</span>
+        <span class="n">kt</span> <span class="o">=</span> <span class="n">kt</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">kt</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">kt</span> <span class="o">&lt;</span> <span class="n">warning_eps</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: kt = </span><span class="si">{</span><span class="n">kt</span><span class="si">}</span><span class="s2"> &lt; 0 returns np.nan!&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+    <span class="n">frac</span> <span class="o">=</span> <span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">theta</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">kt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># erf(np.Inf) = 1</span>
+
+        <span class="c1"># need to check where x - frac or x + frac are greater</span>
+        <span class="c1"># or smaller than zero</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">second</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># convert to signs, because sp.erf(+-np.Inf) = +-1</span>
+        <span class="n">erf1</span> <span class="o">=</span> <span class="n">first</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">erf2</span> <span class="o">=</span> <span class="n">second</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="c1"># first part, np.exp(-np.Inf) = 0 -&gt; omit</span>
+
+        <span class="n">h</span> <span class="o">=</span> <span class="p">((</span><span class="n">theta</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">((</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">*</span> <span class="n">erf1</span> <span class="o">-</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">*</span> <span class="n">erf2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">d</span>
+
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c1"># error function part of equation</span>
+
+        <span class="n">erfs</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">*</span> <span class="n">erf</span><span class="p">((</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">4.</span> <span class="o">*</span> <span class="n">kt</span><span class="p">))</span> <span class="o">-</span> \
+               <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">*</span> <span class="n">erf</span><span class="p">((</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mf">4.</span> <span class="o">*</span> <span class="n">kt</span><span class="p">))</span>
+
+        <span class="c1"># exponential part of equation</span>
+        <span class="n">exps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">4.</span> <span class="o">*</span> <span class="n">kt</span><span class="p">))</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="p">((</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">4.</span> <span class="o">*</span> <span class="n">kt</span><span class="p">))</span>
+
+        <span class="c1"># final equation</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="n">theta</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">kt</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span> <span class="o">*</span> <span class="n">exps</span> <span class="o">+</span> \
+            <span class="p">((</span><span class="n">theta</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">erfs</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">d</span>
+
+    <span class="k">return</span> <span class="n">h</span></div>
+
+
+<div class="viewcode-block" id="analytical_derivative"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.analytical_derivative">[docs]</a><span class="k">def</span> <span class="nf">analytical_derivative</span><span class="p">(</span>
+    <span class="n">d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">kt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    analytival_derivative: Function to compute the first derivative in space of</span>
+<span class="sd">    the riser scarp equation (analytical_profile()).</span>
+<span class="sd">    Taken from Pelletier et al. (2006).</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        d: np.ndarray</span>
+<span class="sd">            Along-profile distances.</span>
+<span class="sd">        kt: float</span>
+<span class="sd">            Diffusion age.</span>
+<span class="sd">        a: float</span>
+<span class="sd">            Initial half riser height.</span>
+<span class="sd">        b: float</span>
+<span class="sd">            Far field gradient.</span>
+<span class="sd">        theta: float</span>
+<span class="sd">            Initial gradient at midpoint and age zero.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        dhdx: np.ndarray</span>
+<span class="sd">            Derivative in space for each point.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">frac</span> <span class="o">=</span> <span class="n">a</span> <span class="o">/</span> <span class="p">(</span><span class="n">theta</span> <span class="o">-</span> <span class="n">b</span><span class="p">)</span>
+    <span class="n">theta_b</span> <span class="o">=</span> <span class="n">theta</span> <span class="o">-</span> <span class="n">b</span>
+
+    <span class="k">if</span> <span class="n">kt</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># this should never happen on purpose, but does during optimize.</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="o">-</span><span class="mi">9999</span><span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">kt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># erf(np.Inf) = 1</span>
+
+        <span class="c1"># need to check where x - frac or x + frac are greater</span>
+        <span class="c1"># or smaller than zero</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="n">frac</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">second</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span> <span class="o">-</span> <span class="n">frac</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># convert to signs, because sp.erf(+-np.Inf) = +-1</span>
+        <span class="n">erf1</span> <span class="o">=</span> <span class="n">first</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">erf2</span> <span class="o">=</span> <span class="n">second</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="n">dh</span> <span class="o">=</span> <span class="p">(</span><span class="n">theta_b</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">erf1</span> <span class="o">-</span> <span class="n">erf2</span><span class="p">)</span> <span class="o">+</span> <span class="n">b</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="n">sqrt_kt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">kt</span><span class="p">)</span>
+
+        <span class="n">dh</span> <span class="o">=</span> <span class="p">(</span><span class="n">theta_b</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">erf</span><span class="p">((</span><span class="n">d</span> <span class="o">+</span> <span class="n">a</span> <span class="o">/</span> <span class="n">theta_b</span><span class="p">)</span> <span class="o">/</span> <span class="n">sqrt_kt</span><span class="p">)</span> <span class="o">-</span>
+                              <span class="n">erf</span><span class="p">((</span><span class="n">d</span> <span class="o">-</span> <span class="n">a</span> <span class="o">/</span> <span class="n">theta_b</span><span class="p">)</span> <span class="o">/</span> <span class="n">sqrt_kt</span><span class="p">))</span> <span class="o">+</span> <span class="n">b</span>
+
+    <span class="k">return</span> <span class="n">dh</span></div>
+
+
+<div class="viewcode-block" id="compute_misfit"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.compute_misfit">[docs]</a><span class="k">def</span> <span class="nf">compute_misfit</span><span class="p">(</span>
+    <span class="n">kt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">d_emp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">z_emp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">d_off</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">z_off</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1e-10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    compute_misfit: Function to compute the misfit between a profile defined</span>
+<span class="sd">    by d_emp and z_emp and an analytical curve defined by kt, a, b, theta at</span>
+<span class="sd">    points d_emp. The function uses the weighted misfit formula</span>
+<span class="sd">    of Avouac (1993). d_off and z_off are set to zero by default, but should</span>
+<span class="sd">    be varied during curve fitting.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        kt: float</span>
+<span class="sd">            Diffusion age of the analytical profile.</span>
+<span class="sd">        d_emp: np.array</span>
+<span class="sd">            Along profile distances for a profile.</span>
+<span class="sd">        z_emp: np.array</span>
+<span class="sd">            Elevations along the profile.</span>
+<span class="sd">        a: float</span>
+<span class="sd">            Half of the initial scarp height of the analytical profile.</span>
+<span class="sd">        b: float</span>
+<span class="sd">            Far field gradient of the analytical profile.</span>
+<span class="sd">        theta: float</span>
+<span class="sd">            Initial gradient of the analytical profile.</span>
+<span class="sd">        d_off: float</span>
+<span class="sd">            Offset in along-profile distance, used to adjust riser profile in</span>
+<span class="sd">            horizontal direction.</span>
+<span class="sd">        z_off: float</span>
+<span class="sd">            Offset in elevation, used to adjust riser profile in vertical</span>
+<span class="sd">            direction.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        misfit: float</span>
+<span class="sd">            Misfit value indicating the quality of fit between the real and</span>
+<span class="sd">            analytical profile</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># compute analytical solution (offset according to d_off, z_off)</span>
+
+    <span class="n">z_ana</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span><span class="n">d_emp</span> <span class="o">+</span> <span class="n">d_off</span><span class="p">,</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">warning_eps</span><span class="p">)</span>
+    <span class="n">z_emp</span> <span class="o">=</span> <span class="n">z_emp</span> <span class="o">+</span> <span class="n">z_off</span>
+
+    <span class="c1"># compute weights</span>
+
+    <span class="n">prof_len</span> <span class="o">=</span> <span class="n">d_emp</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">d_emp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">f_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">d_emp</span><span class="p">))</span>
+    <span class="n">f_i</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">d_emp</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">d_emp</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">prof_len</span>
+    <span class="n">f_i</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span><span class="p">)</span>
+    <span class="n">f_i</span> <span class="o">*=</span> <span class="nb">len</span><span class="p">(</span><span class="n">d_emp</span><span class="p">)</span> <span class="c1"># this is not as in Avouac 1993, but makes it comparable to unweighted RMSE</span>
+    
+    <span class="c1"># compute misfit</span>
+    <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span> <span class="o">*</span> <span class="p">((</span><span class="n">z_ana</span> <span class="o">-</span> <span class="n">z_emp</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_ana</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">rmse</span></div>
+
+
+<div class="viewcode-block" id="distance_along_line"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.distance_along_line">[docs]</a><span class="k">def</span> <span class="nf">distance_along_line</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">point_list</span><span class="p">:</span> <span class="nb">list</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Caluclates the minimum distance between the provided point (x, y), and </span>
+<span class="sd">    a list of point tuples (xx, yy), and returns the the id of the closest tuple.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: float</span>
+<span class="sd">            X coordinate.</span>
+<span class="sd">        y: float</span>
+<span class="sd">            Y coordinate.</span>
+<span class="sd">        point_list: list</span>
+<span class="sd">            List of points in (x, y) format.</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        id_min: int</span>
+<span class="sd">            Index of closest tuple in point_list.</span>
+<span class="sd">        </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">dists</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">xx</span><span class="o">-</span><span class="n">x</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="p">(</span><span class="n">yy</span><span class="o">-</span><span class="n">y</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">)</span> <span class="ow">in</span> <span class="n">point_list</span>
+    <span class="p">]</span>
+    
+    <span class="n">id_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">id_min</span><span class="p">):</span>
+        <span class="n">id_min</span> <span class="o">=</span> <span class="n">id_min</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">id_min</span></div>
+
+<span class="c1">##############################################</span>
+<span class="c1">## PART 2: Statistics to calculate kt, k, t ##</span>
+<span class="c1">##############################################</span>
+
+<div class="viewcode-block" id="calculate_wei_2015_sigma"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.calculate_wei_2015_sigma">[docs]</a><span class="k">def</span> <span class="nf">calculate_wei_2015_sigma</span><span class="p">(</span>
+    <span class="n">residuals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the sigma used for uncertainty interval calculation</span>
+<span class="sd">    in Wei et al. 2015.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        residuals: np.ndarray</span>
+<span class="sd">            The residuals between data and model.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        sigma: float</span>
+<span class="sd">            The sigma as in Wei et al. 2015.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">sigma_res</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma_res</span><span class="o">**</span><span class="mi">4</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">sigma</span></div>
+
+
+<div class="viewcode-block" id="calculate_function_jacobian"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.calculate_function_jacobian">[docs]</a><span class="k">def</span> <span class="nf">calculate_function_jacobian</span><span class="p">(</span>
+    <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+    <span class="n">x_values</span><span class="p">:</span> <span class="n">ArrayLike</span><span class="p">,</span>
+    <span class="n">parameter_values</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+    <span class="n">epsilon</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">ArrayLike</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.4901161193847656e-08</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates a finite difference approximation of the Jacobian.</span>
+<span class="sd">    If func takes p+1 parameters, the Jacobian will have p columns.</span>
+<span class="sd">    The first function argument must always be a vector of x values.</span>
+<span class="sd">    For n x_values, the Jacobian will have n rows.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        func: Callable</span>
+<span class="sd">            Function of the form func(x_values, **params).</span>
+<span class="sd">        x_values: ArrayLike</span>
+<span class="sd">            x values at which the partial derivatives are</span>
+<span class="sd">            evaluated.</span>
+<span class="sd">        parameter_values: dict</span>
+<span class="sd">            Dictionary of the form {key: value, ...} for all</span>
+<span class="sd">            parameters to be passed on to func(), except</span>
+<span class="sd">            x_values. The partial derivatives are calculated,</span>
+<span class="sd">            in the same order, for each key in the dict.</span>
+<span class="sd">        epsilon: ArrayLike | float</span>
+<span class="sd">            Epsilon used for finite difference derivative </span>
+<span class="sd">            calculation. May be an array of length</span>
+<span class="sd">            len(parameter_values.keys()) or a single float.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        jacobian: np.ndarray</span>
+<span class="sd">            The Jacobian matrix of func().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">jacobian</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x_values</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_values</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_values</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+
+        <span class="c1"># parameter dict is adjusted for each partial</span>
+        <span class="c1"># derivative.</span>
+        <span class="n">params1</span> <span class="o">=</span> <span class="n">parameter_values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">params2</span> <span class="o">=</span> <span class="n">parameter_values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">epsilon</span><span class="p">):</span>
+            <span class="n">params1</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">params1</span><span class="p">)[</span><span class="n">i</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">epsilon</span>
+            <span class="n">params2</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">params1</span><span class="p">)[</span><span class="n">i</span><span class="p">]]</span> <span class="o">-=</span> <span class="n">epsilon</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">params1</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">params1</span><span class="p">)[</span><span class="n">i</span><span class="p">]]</span> <span class="o">+=</span> <span class="n">epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">params2</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">params1</span><span class="p">)[</span><span class="n">i</span><span class="p">]]</span> <span class="o">-=</span> <span class="n">epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">diff1</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">x_values</span><span class="p">,</span> <span class="o">**</span><span class="n">params1</span><span class="p">)</span>
+        <span class="n">diff2</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">x_values</span><span class="p">,</span> <span class="o">**</span><span class="n">params2</span><span class="p">)</span>
+
+        <span class="n">eps</span> <span class="o">=</span> <span class="n">epsilon</span> <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">epsilon</span><span class="p">)</span> <span class="k">else</span> <span class="n">epsilon</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">deriv</span> <span class="o">=</span> <span class="p">(</span><span class="n">diff2</span><span class="o">-</span><span class="n">diff1</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">eps</span><span class="p">)</span>
+
+        <span class="n">jacobian</span><span class="p">[:,</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">deriv</span>
+
+    <span class="k">return</span> <span class="n">jacobian</span></div>
+
+
+<div class="viewcode-block" id="propagate_division_error"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.propagate_division_error">[docs]</a><span class="k">def</span> <span class="nf">propagate_division_error</span><span class="p">(</span>
+    <span class="n">num</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">denom</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">num_error</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">denom_error</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Approximates the error for a fraction num / denom where both</span>
+<span class="sd">    the numerator and the denominator have an associated error.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        num: float</span>
+<span class="sd">            Numerator.</span>
+<span class="sd">        denum: float</span>
+<span class="sd">            Denominator.</span>
+<span class="sd">        num_error: float</span>
+<span class="sd">            Error or uncertainty associated with the numerator.</span>
+<span class="sd">        denom_error: float</span>
+<span class="sd">            Error or uncertainty associated with the denominator.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        error: float</span>
+<span class="sd">            The propagated error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">num_error</span><span class="o">/</span><span class="n">num</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">denom_error</span><span class="o">/</span><span class="n">denom</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">error</span> <span class="o">*</span> <span class="p">(</span><span class="n">num</span><span class="o">/</span><span class="n">denom</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="riser_covariance_matrix"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.riser_covariance_matrix">[docs]</a><span class="k">def</span> <span class="nf">riser_covariance_matrix</span><span class="p">(</span>
+    <span class="n">jacobian</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">sum_of_squares</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts a jacobian to a covariance matrix based on </span>
+<span class="sd">    Cov = sos*(J^t * J)^(-1)</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        jacobian: np.ndarray</span>
+<span class="sd">            The Jacobian.</span>
+<span class="sd">        sum_of_squares: float</span>
+<span class="sd">            Sum of squares error.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        cov_mat: np.ndarray</span>
+<span class="sd">            The covariance matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">s2</span> <span class="o">=</span> <span class="n">sum_of_squares</span> <span class="o">/</span> <span class="p">(</span><span class="n">jacobian</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">jacobian</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">jac_inv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">jacobian</span><span class="p">),</span> <span class="n">jacobian</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">cov_mat</span> <span class="o">=</span> <span class="n">s2</span> <span class="o">*</span> <span class="n">jac_inv</span>
+
+    <span class="k">return</span> <span class="n">cov_mat</span></div>
+
+
+<div class="viewcode-block" id="maximum_combined_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.maximum_combined_kde">[docs]</a><span class="k">def</span> <span class="nf">maximum_combined_kde</span><span class="p">(</span>
+    <span class="n">x_vals</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">kdes</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> 
+    <span class="n">bounds</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Expects a list of arrays, each of len(x_vals). Will combine the KDEs and</span>
+<span class="sd">    compute the &quot;maximum-likelihood&quot; of all KDEs. Returns the x value and id.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x_vals: np.ndarray</span>
+<span class="sd">            X values at which the KDEs are defined.</span>
+<span class="sd">        kdes: list</span>
+<span class="sd">            List of np.ndarrays containing the KDE values.</span>
+<span class="sd">        bounds: Tuple[float, float]</span>
+<span class="sd">            Bounds applied to x_vals within which a maximum value is </span>
+<span class="sd">            calculated. Should be (lower_bound, upper_bound).</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        x_max: float</span>
+<span class="sd">            Position of the maximum KDE value.</span>
+<span class="sd">        id_max: int</span>
+<span class="sd">            ID of the maximum value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">id_lower</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">id_upper</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">if</span> <span class="n">bounds</span> <span class="o">!=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># expect (float, float)</span>
+        <span class="n">id_lower</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x_vals</span><span class="o">&lt;</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">id_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">x_vals</span><span class="o">&gt;</span><span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        
+    <span class="n">kde_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">kdes</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_vals</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">kde_i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">kdes</span><span class="p">):</span>
+        <span class="n">kde_2d</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">kde_i</span>
+    <span class="n">kde_avg</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">kde_2d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">id_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">kde_avg</span><span class="p">[</span><span class="n">id_lower</span><span class="p">:</span><span class="n">id_upper</span><span class="p">])</span>
+    <span class="n">x_max</span> <span class="o">=</span> <span class="n">x_vals</span><span class="p">[</span><span class="n">id_lower</span><span class="p">:</span><span class="n">id_upper</span><span class="p">][</span><span class="n">id_max</span><span class="p">]</span>
+    
+    <span class="k">return</span> <span class="p">(</span><span class="n">x_max</span><span class="p">,</span> <span class="n">id_max</span><span class="o">+</span><span class="n">id_lower</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="gaussian"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.gaussian">[docs]</a><span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gaussian/Normal distribution.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.ndarray</span>
+<span class="sd">            Values at which to return PDF values.</span>
+<span class="sd">        mu: float</span>
+<span class="sd">            The mean of the Gaussian.</span>
+<span class="sd">        sigma: float</span>
+<span class="sd">            The standard deviation of the Gaussian.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        pdf: np.ndarray</span>
+<span class="sd">            The Gaussian PDF values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">frac</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span>
+    <span class="n">exponent</span> <span class="o">=</span> <span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mu</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">pdf</span> <span class="o">=</span> <span class="n">frac</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">exponent</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pdf</span></div>
+
+<div class="viewcode-block" id="gaussian_kernel"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.gaussian_kernel">[docs]</a><span class="k">def</span> <span class="nf">gaussian_kernel</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">mu</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">sigma</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns the PDF of a Gaussian distribution</span>
+<span class="sd">    for an input array x.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.ndarray</span>
+<span class="sd">            Values along the x axis.</span>
+<span class="sd">        mu: float</span>
+<span class="sd">            Mean of the Gaussian distribution.</span>
+<span class="sd">        sigma: float</span>
+<span class="sd">            Standard deviation of the </span>
+<span class="sd">            Gaussian distribution.</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        pdf: np.ndarray</span>
+<span class="sd">            PDF values of the Gaussian at positions</span>
+<span class="sd">            specified by x.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">frac</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">sigma</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span> 
+    <span class="n">exponent</span> <span class="o">=</span> <span class="o">-</span><span class="p">((</span><span class="n">x</span><span class="o">-</span><span class="n">mu</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">pdf</span> <span class="o">=</span> <span class="n">frac</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">exponent</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pdf</span></div>
+
+<div class="viewcode-block" id="triang_kernel"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.triang_kernel">[docs]</a><span class="k">def</span> <span class="nf">triang_kernel</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">lb</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">mid</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
+    <span class="n">ub</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A triangular PDF.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.ndarray</span>
+<span class="sd">            Values along the x axis.</span>
+<span class="sd">        lb: float</span>
+<span class="sd">            Lower bound of the PDF.</span>
+<span class="sd">        mid: float</span>
+<span class="sd">            Maximum value of the PDF.</span>
+<span class="sd">        ub: float</span>
+<span class="sd">            Upper bound of the PDF.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        pdf: np.ndarray</span>
+<span class="sd">            The triangular PDF values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="p">((</span><span class="n">mid</span><span class="o">-</span><span class="n">lb</span><span class="p">)</span><span class="o">+</span><span class="p">(</span><span class="n">ub</span><span class="o">-</span><span class="n">mid</span><span class="p">))</span>
+    <span class="n">m1</span> <span class="o">=</span> <span class="n">y</span> <span class="o">/</span> <span class="p">(</span><span class="n">mid</span><span class="o">-</span><span class="n">lb</span><span class="p">)</span>
+    <span class="n">m2</span> <span class="o">=</span> <span class="n">y</span> <span class="o">/</span> <span class="p">(</span><span class="n">mid</span><span class="o">-</span><span class="n">ub</span><span class="p">)</span>
+    <span class="n">n1</span> <span class="o">=</span> <span class="o">-</span><span class="n">lb</span><span class="o">*</span><span class="n">m1</span>
+    <span class="n">n2</span> <span class="o">=</span> <span class="o">-</span><span class="n">ub</span><span class="o">*</span><span class="n">m2</span> 
+    
+    <span class="n">inside1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">x</span><span class="o">&gt;</span><span class="n">lb</span><span class="p">,</span> <span class="n">x</span><span class="o">&lt;=</span><span class="n">mid</span><span class="p">)</span> 
+    <span class="n">inside2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">x</span><span class="o">&gt;</span><span class="n">mid</span><span class="p">,</span> <span class="n">x</span><span class="o">&lt;=</span><span class="n">ub</span><span class="p">)</span>
+    
+    <span class="n">pdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="n">pdf</span><span class="p">[</span><span class="n">inside1</span><span class="p">]</span> <span class="o">=</span> <span class="n">m1</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="n">inside1</span><span class="p">]</span><span class="o">+</span><span class="n">n1</span> 
+    <span class="n">pdf</span><span class="p">[</span><span class="n">inside2</span><span class="p">]</span> <span class="o">=</span> <span class="n">m2</span><span class="o">*</span><span class="n">x</span><span class="p">[</span><span class="n">inside2</span><span class="p">]</span><span class="o">+</span><span class="n">n2</span> 
+    <span class="k">return</span> <span class="n">pdf</span></div>
+
+<div class="viewcode-block" id="triang_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.triang_kde">[docs]</a><span class="k">def</span> <span class="nf">triang_kde</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">lb</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">mid</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">ub</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A KDE composed of multiple triangular PDFs.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.ndarray</span>
+<span class="sd">            Values along the x axis.</span>
+<span class="sd">        lb: np.ndarray</span>
+<span class="sd">            Lower bounds of the triangular PDFs.</span>
+<span class="sd">        mid: np.ndarray</span>
+<span class="sd">            Maximum values of the triangular PDFs.</span>
+<span class="sd">        ub: np.ndarray</span>
+<span class="sd">            Upper bounds of the triangular PDFs.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        pdf: np.ndarray</span>
+<span class="sd">            The KDE values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tot_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">mid</span><span class="p">,</span> <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">):</span>
+        <span class="n">tot_sum</span> <span class="o">+=</span> <span class="n">triang_kernel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">u</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tot_sum</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">mid</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="kde_gaussian"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.kde_gaussian">[docs]</a><span class="k">def</span> <span class="nf">kde_gaussian</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">xi</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+    <span class="n">si</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a KDE (or composite PDF) out of multiple</span>
+<span class="sd">    Gaussian distributions.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        x: np.ndarray</span>
+<span class="sd">            The values along the x axis where KDE</span>
+<span class="sd">            values are output.</span>
+<span class="sd">        xi: np.ndarray</span>
+<span class="sd">            An array of Gaussian mean values (mu)</span>
+<span class="sd">            for each Gaussian distribution.</span>
+<span class="sd">        si: np.ndarray</span>
+<span class="sd">            An array of standard deviations (sigma)</span>
+<span class="sd">            for each Gaussian distribution.</span>
+<span class="sd">            </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        kde: np.ndarray</span>
+<span class="sd">            Array of length len(x) containing KDE</span>
+<span class="sd">            values along the x axis.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tot_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">mu</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">xi</span><span class="p">,</span> <span class="n">si</span><span class="p">):</span>
+        <span class="n">tot_sum</span> <span class="o">+=</span> <span class="n">gaussian_kernel</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">mu</span><span class="p">,</span> <span class="n">s</span><span class="p">)</span>
+    <span class="n">kde</span> <span class="o">=</span> <span class="n">tot_sum</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">kde</span></div>
+
+
+<div class="viewcode-block" id="StatsMC"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC">[docs]</a><span class="k">class</span> <span class="nc">StatsMC</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class provides tools for Monte Carlo simulations </span>
+<span class="sd">    to calibrate diffusivity and morphological age </span>
+<span class="sd">    based on a set of kt and an estimate of t.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">kt</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+        <span class="n">lb_kt</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+        <span class="n">ub_kt</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+        <span class="n">t</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+        <span class="n">t_sigma</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+        <span class="n">identifier</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;StatsMC&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialise a StatsMC instance.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            kt: Union[list, np.ndarray]</span>
+<span class="sd">                Diffusion ages of the Riser instance.</span>
+<span class="sd">            lb_kt: Union[list, np.ndarray]</span>
+<span class="sd">                Lower kt uncertainties.</span>
+<span class="sd">            ub_kt: Union[list, np.ndarray]</span>
+<span class="sd">                Upper kt uncertainties.</span>
+<span class="sd">            t: Union[float, list, np.ndarray] </span>
+<span class="sd">                External age constraints of the risers. These may be multiple</span>
+<span class="sd">                ages, e.g. if multiple ages for a single terrace exist.</span>
+<span class="sd">            t_sigma: Union[float, list, np.ndarray]</span>
+<span class="sd">                External age uncertainties.</span>
+<span class="sd">            identifier: str</span>
+<span class="sd">                The identifier string of the StatsMC instance.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">kt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">kt</span><span class="p">)</span>  
+        <span class="bp">self</span><span class="o">.</span><span class="n">lb_kt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lb_kt</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">ub_kt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ub_kt</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">t</span><span class="p">])</span> <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">t_sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">t_sigma</span><span class="p">])</span> <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">t_sigma</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">t_sigma</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span> <span class="o">=</span> <span class="n">identifier</span>
+        <span class="c1"># Additional attributes to be assigned later on</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kt_kde</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_t_kde</span> <span class="o">=</span> <span class="kc">None</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">MC_t_kde</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_kde</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MC_t_sample</span> <span class="o">=</span> <span class="kc">None</span>
+        
+<div class="viewcode-block" id="StatsMC.construct_kt_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.construct_kt_kde">[docs]</a>    <span class="k">def</span> <span class="nf">construct_kt_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">kde</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="n">triang_kde</span><span class="p">,</span>
+        <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e4</span><span class="p">,</span>
+        <span class="n">kt_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Constructs a KDE of kt from which to sample. This self.kt_kde inherits</span>
+<span class="sd">        its methods from scipy.stats.rv_continuous</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            kde: callable</span>
+<span class="sd">                A function that takes on values specified by kde_dict.</span>
+<span class="sd">                Must take arguments in the form kde(x, lb, mid, ub).</span>
+<span class="sd">            min_val: float</span>
+<span class="sd">                Lower bound of the KDE, if not defined within the kde callable.</span>
+<span class="sd">            max_val: float</span>
+<span class="sd">                Upper bound of the KDE, if not defined within the kde callable.</span>
+<span class="sd">                </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                A PDF instance of the riserfit.CustomDistribution class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># store min and max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kt_min_val</span> <span class="o">=</span> <span class="n">min_val</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kt_max_val</span> <span class="o">=</span> <span class="n">max_val</span>
+        <span class="n">ktx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="o">+</span><span class="n">kt_resolution</span><span class="p">,</span> <span class="n">kt_resolution</span><span class="p">)</span>
+        <span class="n">pdf_kt</span> <span class="o">=</span> <span class="n">kde</span><span class="p">(</span><span class="n">ktx</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lb_kt</span><span class="p">,</span> <span class="n">mid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">kt</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ub_kt</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">kt_kde</span> <span class="o">=</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">ktx</span><span class="p">,</span> <span class="n">pdf</span><span class="o">=</span><span class="n">pdf_kt</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+<div class="viewcode-block" id="StatsMC.construct_initial_t_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.construct_initial_t_kde">[docs]</a>    <span class="k">def</span> <span class="nf">construct_initial_t_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">kde</span><span class="p">:</span> <span class="nb">callable</span> <span class="o">=</span> <span class="n">kde_gaussian</span><span class="p">,</span>
+        <span class="n">t_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Construct a KDE from independent age constraints. This function</span>
+<span class="sd">        sets the StatsMC.initial_t_kde attribute, which is an instance</span>
+<span class="sd">        of riserfit.DistributionFromInterpolator.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            kde: callable</span>
+<span class="sd">                The type of KDE to be output. Must be a function.</span>
+<span class="sd">                Default is riserfit.kde_gaussian.</span>
+<span class="sd">            t_resolution: float</span>
+<span class="sd">                The resolution at which t values are calculated.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The StatsMC instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># store min and max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">t_min_val</span> <span class="o">=</span> <span class="mf">1e-5</span> <span class="c1"># should not be 0 due to division error</span>
+        <span class="n">id_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">t_max_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">[</span><span class="n">id_max</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">t_sigma</span><span class="p">[</span><span class="n">id_max</span><span class="p">]</span><span class="o">*</span><span class="mi">5</span>
+        
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t_max_val</span><span class="o">+</span><span class="n">t_resolution</span><span class="p">,</span> <span class="n">t_resolution</span><span class="p">)</span>
+        <span class="n">pdf_t</span> <span class="o">=</span> <span class="n">kde</span><span class="p">(</span><span class="n">tx</span><span class="p">,</span> <span class="n">xi</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">t</span><span class="p">,</span> <span class="n">si</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">t_sigma</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_t_kde</span> <span class="o">=</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">tx</span><span class="p">,</span> <span class="n">pdf</span><span class="o">=</span><span class="n">pdf_t</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+<div class="viewcode-block" id="StatsMC.set_k_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.set_k_kde">[docs]</a>    <span class="k">def</span> <span class="nf">set_k_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">k_kde</span><span class="p">:</span> <span class="nb">callable</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Use a k_kde from some external source to set StatsMC.k_kde. </span>
+<span class="sd">        Should behave similar to </span>
+<span class="sd">        a riserfit.DistributionFromInterpolator instance.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            k_kde: callable</span>
+<span class="sd">                KDE to be used for drawing random samples from.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The StatsMC instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_kde</span> <span class="o">=</span> <span class="n">k_kde</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_min_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">k_kde</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_max_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">k_kde</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+        
+<div class="viewcode-block" id="StatsMC.construct_MC_k_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.construct_MC_k_kde">[docs]</a>    <span class="k">def</span> <span class="nf">construct_MC_k_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e2</span><span class="p">,</span>
+        <span class="n">k_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.25</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimate a PDF of k by sampling self.kt_kde and self.t_kde. </span>
+<span class="sd">        t is treated as a Gaussian variable and the resulting KDE kernel is </span>
+<span class="sd">        a reciprocal inverse Gaussian. The resulting KDE is available in</span>
+<span class="sd">        StatsMC.k_kde and is an instance of riserfit.DistributionFromInterpolator.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            n: int</span>
+<span class="sd">                Number of random draws from self.kt_kde</span>
+<span class="sd">            min_val: float</span>
+<span class="sd">                Minimum value for the k PDF.</span>
+<span class="sd">            max_val: float</span>
+<span class="sd">                Maximum value for the k PDF.</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                A PDF instance of the </span>
+<span class="sd">                riserfit.DistributionFromInterpolator class.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="c1"># save min and max</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_min_val</span> <span class="o">=</span> <span class="n">min_val</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_max_val</span> <span class="o">=</span> <span class="n">max_val</span> 
+        
+        <span class="n">ktx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kt_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kt_max_val</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">t_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">t_max_val</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+
+        <span class="c1"># create two weighted samples</span>
+        <span class="n">pdf_kt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kt_kde</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">ktx</span><span class="p">)</span>
+        <span class="n">pdf_t</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_t_kde</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+        <span class="n">kt_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">ktx</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">pdf_kt</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf_kt</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">t_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">tx</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">pdf_t</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf_t</span><span class="p">)</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># calculate CDF and differentiate to PDF</span>
+        <span class="n">k_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">kt_sample</span> <span class="o">/</span> <span class="n">t_sample</span><span class="p">)</span>
+        <span class="n">cdf_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">kx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="o">+</span><span class="n">k_resolution</span><span class="p">,</span> <span class="n">k_resolution</span><span class="p">)</span>
+        <span class="n">cdf_intfun</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="n">k_sample</span><span class="p">,</span> <span class="n">cdf_k</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">cdf_k</span> <span class="o">=</span> <span class="n">cdf_intfun</span><span class="p">(</span><span class="n">kx</span><span class="p">)</span>
+        <span class="n">pdf_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">cdf_k</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">pdf_k</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_k</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">cdf_k</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">kx</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">kx</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">pdf_k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_k</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_k</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">kx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">kx</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">pdf_k</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_k</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_k</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">kx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">kx</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="c1"># print(np.trapz(y=pdf_k, x=kx))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_kde</span> <span class="o">=</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span>
+            <span class="n">kx</span><span class="p">,</span> <span class="n">pdf_k</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k_sample</span> <span class="o">=</span> <span class="n">k_sample</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+    <span class="c1">##### EXPERIMENTAL</span>
+<div class="viewcode-block" id="StatsMC.construct_paired_t_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.construct_paired_t_kde">[docs]</a>    <span class="k">def</span> <span class="nf">construct_paired_t_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">min_val</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+        <span class="n">max_val</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n_vals</span><span class="o">=</span><span class="mi">100_000</span><span class="p">,</span>
+        <span class="n">t_resolution</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        EXPERIMENTAL; DO NOT USE</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;construct_paired_t_kde is experimental and should not be used!&quot;</span><span class="p">)</span>
+        <span class="c1"># from inverse CDFs, take x values corresponding to quantiles</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">,</span> <span class="n">n_vals</span><span class="p">)</span>
+        <span class="n">k_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_kde</span><span class="o">.</span><span class="n">inverse_cdf</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        <span class="n">kt_sample</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kt_kde</span><span class="o">.</span><span class="n">inverse_cdf</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        
+        <span class="n">t_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">kt_sample</span> <span class="o">/</span> <span class="n">k_sample</span><span class="p">)</span>
+        <span class="c1"># generate a CDF and then PDF from this t sample</span>
+        <span class="n">cdf_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">n_vals</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_vals</span><span class="p">)</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="o">+</span><span class="n">t_resolution</span><span class="p">,</span> <span class="n">t_resolution</span><span class="p">)</span>
+
+        <span class="n">cdf_intfun</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="n">t_vals</span><span class="p">,</span> <span class="n">cdf_x</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>        
+        <span class="n">cdf_t</span> <span class="o">=</span> <span class="n">cdf_intfun</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+        <span class="n">pdf_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">cdf_t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">tx</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">tx</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">tx</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="c1"># print(np.trapz(y=pdf_k, x=kx))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">paired_t_kde</span> <span class="o">=</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span>
+            <span class="n">tx</span><span class="p">,</span> <span class="n">pdf_t</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+        
+    <span class="c1">##### EXPERIMENTAL END</span>
+    
+<div class="viewcode-block" id="StatsMC.construct_MC_t_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.StatsMC.construct_MC_t_kde">[docs]</a>    <span class="k">def</span> <span class="nf">construct_MC_t_kde</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
+        <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
+        <span class="n">t_resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a set of morphological ages (with unit time) from</span>
+<span class="sd">        self.k_kde and self.kt_kde. This is independent of self.t_kde!</span>
+<span class="sd">        The resulting KDE is available in StatsMC.MC_t_kde and is an</span>
+<span class="sd">        instance of riserfit.DistributionFromInterpolator.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            min_val: float</span>
+<span class="sd">                Lower bound of the KDE.</span>
+<span class="sd">            max_val: float</span>
+<span class="sd">                Upper bound of the KDE.</span>
+<span class="sd">            n: int</span>
+<span class="sd">                Number of draws.</span>
+<span class="sd">            t_resolution: float</span>
+<span class="sd">                Resolution of t values.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The StatsMC instance.</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">ktx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kt_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">kt_max_val</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">kt_kde</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">ktx</span><span class="p">)</span>
+        <span class="n">kt_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">ktx</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">pdf</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf</span><span class="p">)</span>
+        <span class="p">)</span>
+        
+        <span class="n">kx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">k_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_max_val</span><span class="p">,</span> <span class="mi">10</span><span class="o">*</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k_kde</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">kx</span><span class="p">)</span>
+        <span class="n">k_sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">kx</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="n">pdf</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">pdf</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># k must not be 0...</span>
+        <span class="n">k_sample</span> <span class="o">=</span> <span class="n">k_sample</span><span class="p">[</span><span class="n">k_sample</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">kt_sample</span> <span class="o">=</span> <span class="n">kt_sample</span><span class="p">[</span><span class="n">k_sample</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">kt_sample</span> <span class="o">/</span> <span class="n">k_sample</span><span class="p">)</span>
+        
+        <span class="c1"># generate a CDF and then PDF from this t sample</span>
+        <span class="n">cdf_x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">tx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="o">+</span><span class="n">t_resolution</span><span class="p">,</span> <span class="n">t_resolution</span><span class="p">)</span>
+
+        <span class="n">cdf_intfun</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="n">t</span><span class="p">,</span> <span class="n">cdf_x</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>        
+        <span class="n">cdf_t</span> <span class="o">=</span> <span class="n">cdf_intfun</span><span class="p">(</span><span class="n">tx</span><span class="p">)</span>
+        <span class="n">pdf_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">cdf_t</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">tx</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">-</span><span class="n">tx</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">pdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">cdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">cdf_t</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">tx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">tx</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="c1"># print(np.trapz(y=pdf_k, x=kx))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MC_t_kde</span> <span class="o">=</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span>
+            <span class="n">tx</span><span class="p">,</span> <span class="n">pdf_t</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">MC_t_sample</span> <span class="o">=</span> <span class="n">t</span> 
+        
+        <span class="k">return</span> <span class="bp">self</span>     </div></div>
+    
+<div class="viewcode-block" id="construct_averaged_kde"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.construct_averaged_kde">[docs]</a><span class="k">def</span> <span class="nf">construct_averaged_kde</span><span class="p">(</span>
+  <span class="n">list_of_StatsMC</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span>
+  <span class="n">min_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span><span class="p">,</span>
+  <span class="n">max_val</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e2</span><span class="p">,</span>
+  <span class="n">resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span>
+  <span class="n">attr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;k_kde&quot;</span><span class="p">,</span>  
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DistributionFromInterpolator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes an averaged PDF based on a number of input PDFs. This function</span>
+<span class="sd">    is explicitly for use on multiple StatsMC instances.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        list_of_StatsMC: list</span>
+<span class="sd">            List containing StatsMC instances. Each instance must posses</span>
+<span class="sd">            the PDF or KDE to be sampled.</span>
+<span class="sd">        min_val: float</span>
+<span class="sd">            Minimum value of the averaged PDF.</span>
+<span class="sd">        max_val: float</span>
+<span class="sd">            Maximum value of the averaged PDF.</span>
+<span class="sd">        resolution: float</span>
+<span class="sd">            Step size of the averaged PDF.</span>
+<span class="sd">        attr: str</span>
+<span class="sd">            The KDE or PDF to be averaged for each StatsMC. Default is</span>
+<span class="sd">            &quot;k_kde&quot;. Must match an existing instance attribute.</span>
+<span class="sd">            </span>
+<span class="sd">    Returns: </span>
+<span class="sd">    --------</span>
+<span class="sd">        pdf: DistributionFromInterpolater</span>
+<span class="sd">            Distribution instance containing the averaged PDF.</span>
+<span class="sd">            </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">min_val</span><span class="p">,</span> <span class="n">max_val</span><span class="o">+</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span><span class="p">)</span>
+    <span class="n">pdf_2d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_StatsMC</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">smc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">list_of_StatsMC</span><span class="p">):</span>
+        <span class="n">pdf_2d</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">smc</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        
+    <span class="n">pdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">pdf_2d</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">DistributionFromInterpolator</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">pdf</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DistributionFromInterpolator"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.DistributionFromInterpolator">[docs]</a><span class="k">class</span> <span class="nc">DistributionFromInterpolator</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class that contains basic statistical tools for the use of probability</span>
+<span class="sd">    density functions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
+        <span class="n">pdf</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize a DistributionFromInterpolator instance.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            x: np.ndarray</span>
+<span class="sd">                X values for the PDF.</span>
+<span class="sd">            pdf: np.ndarray</span>
+<span class="sd">                Values of the PDF. Must match the shape of x.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">=</span><span class="n">pdf</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">density</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">trapz</span><span class="p">(</span><span class="n">y</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">pdf</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="p">,</span> <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_min_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_max_val</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        
+        <span class="c1"># construct CDF:</span>
+        <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">dx</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="mi">2</span>
+        <span class="n">dx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">dx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cdf</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">*</span><span class="n">dx</span><span class="p">),</span>
+            <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># construct inverse CDF</span>
+        <span class="c1"># this fill value only works for well-behaved x!!</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inverse_cdf</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">interpolate</span><span class="o">.</span><span class="n">interp1d</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">*</span><span class="n">dx</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+    
+<div class="viewcode-block" id="DistributionFromInterpolator.sample"><a class="viewcode-back" href="../../riserfit.html#riserfit.riser_maths.DistributionFromInterpolator.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">resolution</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample values from the PDF.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            resolution: float</span>
+<span class="sd">                The resolution in x. If None, values are sampled from self.x.</span>
+<span class="sd">            n: float</span>
+<span class="sd">                Sample size.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            sample: np.ndarray</span>
+<span class="sd">                Sample from the PDF.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">resolution</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> 
+                <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> 
+                <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+                <span class="n">p</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">density</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>          
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_min_val</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_val</span><span class="o">+</span><span class="n">resolution</span><span class="p">,</span> <span class="n">resolution</span>
+            <span class="p">)</span>
+            <span class="n">dens</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span> 
+                <span class="n">size</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> 
+                <span class="n">replace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+                <span class="n">p</span><span class="o">=</span><span class="n">dens</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dens</span><span class="p">)</span>
+            <span class="p">)</span>
+ 
+        <span class="k">return</span> <span class="n">sample</span></div></div>
+                
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Lennart Grimm.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

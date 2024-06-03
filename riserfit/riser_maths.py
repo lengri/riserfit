@@ -1103,24 +1103,24 @@ def construct_averaged_kde(
 
 class DistributionFromInterpolator():
     """
-    Class that contains basic statistical tools to use probability
+    Class that contains basic statistical tools for the use of probability
     density functions.
     """
     def __init__(
         self, 
         x: np.ndarray, 
         pdf: np.ndarray
-    ):
+    ) -> None:
         """
         Initialize a DistributionFromInterpolator instance.
-        
+
         Parameters:
         -----------
             x: np.ndarray
                 X values for the PDF.
             pdf: np.ndarray
                 Values of the PDF. Must match the shape of x.
-            
+
         Returns:
         --------
             None
@@ -1160,18 +1160,18 @@ class DistributionFromInterpolator():
     ) -> np.ndarray:
         """
         Sample values from the PDF.
-        
+
         Parameters:
         -----------
             resolution: float
-                The resolution in x. If None, self.x is used to sample from.
+                The resolution in x. If None, values are sampled from self.x.
             n: float
                 Sample size.
-        
+
         Returns:
         --------
             sample: np.ndarray
-                A sample from the PDF.
+                Sample from the PDF.
         """
         if resolution == None:
             sample = np.random.choice(

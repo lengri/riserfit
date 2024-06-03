@@ -882,7 +882,7 @@ class Riser:
         instance are preserved.
 
         Parameters:
-        -----
+        -----------
             start: int or str
                 If of type int, position of the first profile to be subset.
                 If of tpye str, name of the first profile to be subset.
@@ -894,7 +894,7 @@ class Riser:
                 to be subset.
 
         Returns:
-        -----
+        --------
             new_riser: Riser
                 A new Riser instance.
 
@@ -944,13 +944,13 @@ class Riser:
         Calculates the profile orientation relative to north. 
 
         Parameters:
-        -----
+        -----------
             rad: bool
                 Angles are returned in rad. If False, returned in 
                 degrees.
         
         Returns:
-        -----
+        --------
             self: Self
                 The Riser instance.
         """
@@ -1532,7 +1532,7 @@ class Riser:
         based on Perron (2011).
 
         Parameters:
-        -------
+        -----------
             t_range: list
                 List of age boundary tuples. If list is empty,
                 upper boundaries are set to self.best_kt[i]*2.
@@ -2201,15 +2201,15 @@ class Riser:
         cosmogenic nuclide (CN) ages. CN ages are loaded from a .csv
         file defined by the filepath and infile.
         This file should consist of at least:
-            #. A column containing the profile name. If the name in the
-            file is profileA, but profileA has been split into
-            profileA_0, profileA_1, etc., it will still be found and the
-            CN age associated with profileA will be assigned to
-            profileA_0, profileA_1, etc.
-            #. A column containing the sample (or mean sample) age.
-            #. A column containing CN uncertainty (1sigma or similar).
-            #. (Optional) A column indicating the reliability of CN
-            ages.
+        #. A column containing the profile name. If the name in the
+        file is profileA, but profileA has been split into
+        profileA_0, profileA_1, etc., it will still be found and the
+        CN age associated with profileA will be assigned to
+        profileA_0, profileA_1, etc.
+        #. A column containing the sample (or mean sample) age.
+        #. A column containing CN uncertainty (1sigma or similar).
+        #. (Optional) A column indicating the reliability of CN
+        ages.
 
         Parameters:
         -----------
@@ -2666,7 +2666,7 @@ class Riser:
         the original profile.
 
         Parameters:
-        -----
+        -----------
             iterations: int
                 The number of resamples undertaken for each profile.
             fraction_reduction: float
@@ -2682,7 +2682,7 @@ class Riser:
                 ``Riser.compute_best_linear_diffusion_fit()``.
 
         Returns:
-        -----
+        --------
             self: Self
                 The Riser instance.
 
@@ -3532,7 +3532,7 @@ class Riser:
                 Whether to display profile names on the map.
 
         Returns:
-        -----------
+        --------
             None
         """
 
@@ -3605,7 +3605,7 @@ def load_Riser_instance_structure(
             the ``.npy`` Riser instance.
 
     Returns:
-    -----------
+    --------
         riser: class
             Instance of the Riser class.
 

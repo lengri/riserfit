@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>riserfit.diffusion &mdash; riserfit 0.0.2 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/underscore.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="author" title="About these documents" href="../../about.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            riserfit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">riserfit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">riserfit.diffusion</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for riserfit.diffusion</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">from</span> <span class="nn">numpy.typing</span> <span class="kn">import</span> <span class="n">ArrayLike</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Self</span> <span class="c1"># pre python 3.11</span>
+
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">scipy.linalg</span> <span class="kn">import</span> <span class="n">solve_banded</span>
+<span class="kn">from</span> <span class="nn">matplotlib.animation</span> <span class="kn">import</span> <span class="n">FuncAnimation</span><span class="p">,</span> <span class="n">PillowWriter</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="c1"># small numeric checker</span>
+<span class="k">def</span> <span class="nf">_is_numeric</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+<div class="viewcode-block" id="lin_diffusion_exp_fwd_time"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.lin_diffusion_exp_fwd_time">[docs]</a><span class="k">def</span> <span class="nf">lin_diffusion_exp_fwd_time</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    lin_diffusion_exp_fwd_time: Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the linear diffusion</span>
+<span class="sd">    equation dz/dt = k * d^2z / dx^2. The explicit solution is calculated</span>
+<span class="sd">    forwards in time and centered in space. Boundary conditions should be given</span>
+<span class="sd">    as elevation values in z_init[0] and z_init[-1].</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="n">t_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># copy boundaries from intial profile</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="c1"># define constant:</span>
+
+    <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">dt</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># check for stability:</span>
+
+    <span class="k">if</span> <span class="n">C</span> <span class="o">&gt;=</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;Courant–Friedrichs–Lewy condition not met&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
+            <span class="n">C</span><span class="o">*</span><span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">t_steps</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TridiagonalElimination"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.TridiagonalElimination">[docs]</a><span class="k">class</span> <span class="nc">TridiagonalElimination</span><span class="p">:</span>  <span class="c1"># to be used in lin_diffusion_impl_ ...</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Solve matrix elimination problem of form M*y = r:</span>
+
+<span class="sd">    | b[0] c[1]                              || y[0] |   | r[0] |</span>
+<span class="sd">    | a[0] b[1] c[2]                         || y[1] |   | r[1] |</span>
+<span class="sd">    |      a[1] b[2] c[3]                    || y[2] |   | r[2] |</span>
+<span class="sd">    |           .    .    .                  || .    | = | .    |</span>
+<span class="sd">    |                .    .    .             || .    |   | .    |</span>
+<span class="sd">    |                     .    .      c[n]   || .    |   | .    |</span>
+<span class="sd">    |                          a[n-1] b[n]   || y[n] |   | r[n] |</span>
+
+<span class="sd">    for y[:].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> 
+        <span class="n">length</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize a TridiagonalElimination instace.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        ----------- </span>
+<span class="sd">            length: int</span>
+<span class="sd">                The size of the diagonals. The main diagonal has </span>
+<span class="sd">                length 0 to n.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">length</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TridiagonalElimination.solve"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.TridiagonalElimination.solve">[docs]</a>    <span class="k">def</span> <span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Solve the matrix equation for y.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            None</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            y: np.ndarray</span>
+<span class="sd">                The solution to M*y = r</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lhs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span> <span class="bp">self</span><span class="o">.</span><span class="n">c</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">a</span> <span class="p">))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">solve_banded</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">lhs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">r</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y</span></div></div>
+
+
+
+<div class="viewcode-block" id="lin_diffusion_impl_backwd_time"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.lin_diffusion_impl_backwd_time">[docs]</a><span class="k">def</span> <span class="nf">lin_diffusion_impl_backwd_time</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to calculate the evolution of a one-dimensional surface </span>
+<span class="sd">    morphology according to the linear diffusion equation </span>
+<span class="sd">    dz/dt = k * d^2z / dx^2. The implicit solution is calculated</span>
+<span class="sd">    backwards in time and centered in space. Boundary conditions should be given</span>
+<span class="sd">    as elevation values in z_init[0] and z_init[-1].</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">solver</span> <span class="o">=</span> <span class="n">TridiagonalElimination</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">))</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">dt</span> <span class="o">*</span> <span class="n">k</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">C</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">C</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">C</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">z_init</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span>
+        <span class="n">times</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">times</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="lin_diffusion_crank_nicolson"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.lin_diffusion_crank_nicolson">[docs]</a><span class="k">def</span> <span class="nf">lin_diffusion_crank_nicolson</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">ArrayLike</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the linear diffusion</span>
+<span class="sd">    equation dz/dt = k * d^2z / dx^2. This function is based on the</span>
+<span class="sd">    Crank-Nicolson method for numerically solving differential equations and</span>
+<span class="sd">    indends to archieve a compromise between stability and accuracy.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># if k is float, build array of length n_t</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(k) != n_t&quot;</span><span class="p">)</span>
+
+    <span class="c1"># create a C vector of length n_t</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="p">[(</span><span class="n">dt</span><span class="o">*</span><span class="n">k_i</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">k_i</span> <span class="ow">in</span> <span class="n">k</span><span class="p">]</span>
+
+    <span class="n">solver</span> <span class="o">=</span> <span class="n">TridiagonalElimination</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">))</span>
+
+    <span class="n">solver</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">z_init</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>  <span class="c1"># for emplacing boundary conditions</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+    <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># initial RHS vector for Crank-Nicolson</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">C</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">z_init</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> \
+        <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">C</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">*</span><span class="n">z_init</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">C</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">z_init</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="c1">#C = (dt * k[i-1]) / (2 * dx ** 2)</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+        <span class="c1"># update RHS</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> \
+            <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">C</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="n">times</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">times</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">times</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="nonlin_diffusion_explicit"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.nonlin_diffusion_explicit">[docs]</a><span class="k">def</span> <span class="nf">nonlin_diffusion_explicit</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">S_c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    nonlin_diffusion_explicit: Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the nonlinear diffusion</span>
+<span class="sd">    equation dz/dt = d/dx[f(x,k)dz/dx]. Where f(x,k) = k / (1-grad(z(x))/S_c).</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+<span class="sd">        S_c: float</span>
+<span class="sd">            Critical slope.</span>
+<span class="sd">        n: int</span>
+<span class="sd">            Exponent in the nonlinear transport term.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="c1"># copy boundaries from intial profile</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">t_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># stability: according to Perron 2011</span>
+
+    <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_init</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">z_init</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">dx</span>
+    <span class="n">K_nl</span> <span class="o">=</span> <span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">3</span><span class="o">-</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">K_nl</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
+        <span class="n">dt_lim</span> <span class="o">=</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">K_nl</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dt of </span><span class="si">{</span><span class="n">dt</span><span class="si">}</span><span class="s2"> may cause instability. Should be smaller than </span><span class="si">{</span><span class="n">dt_lim</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+
+    <span class="c1"># define constant:</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="p">(</span><span class="n">k</span> <span class="o">*</span> <span class="n">dt</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="c1">#with np.printoptions(threshold=np.inf):</span>
+            <span class="c1">#print(prof_matrix[i-1,:])</span>
+        <span class="n">diff1</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">grad1</span> <span class="o">=</span> <span class="p">(</span><span class="n">diff1</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">*</span><span class="n">S_c</span><span class="p">))</span> <span class="o">**</span> <span class="n">n</span>
+        <span class="n">diff2</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">grad2</span> <span class="o">=</span> <span class="p">(</span><span class="n">diff2</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">*</span><span class="n">S_c</span><span class="p">))</span> <span class="o">**</span> <span class="n">n</span>
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
+            <span class="n">C</span> <span class="o">*</span> <span class="p">(((</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">grad2</span><span class="p">))</span> <span class="o">*</span> <span class="n">diff2</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">grad1</span><span class="p">))</span> <span class="o">*</span> <span class="n">diff1</span><span class="p">))</span>
+        <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">t_steps</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="nonlin_diffusion_explicit_Perron2011"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.nonlin_diffusion_explicit_Perron2011">[docs]</a><span class="k">def</span> <span class="nf">nonlin_diffusion_explicit_Perron2011</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">S_c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">uplift_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+    <span class="n">rho_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    nonlin_diffusion_explicit: Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the nonlinear diffusion</span>
+<span class="sd">    equation dz/dt = d/dx[f(x,k)dz/dx]. Where f(x,k) = k / (1-grad(z(x))/S_c).</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.array</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+<span class="sd">        S_c: float</span>
+<span class="sd">            Critical slope.</span>
+<span class="sd">        uplift_rate: float</span>
+<span class="sd">            Constant uplift rate applied to the profile.</span>
+<span class="sd">        rho_rtio: float</span>
+<span class="sd">            Ratio of bedrock to sediment density. One by default.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="c1"># copy boundaries from intial profile</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">t_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># stability: according to Perron 2011</span>
+
+    <span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_init</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">z_init</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">dx</span>
+    <span class="n">K_nl</span> <span class="o">=</span> <span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">3</span><span class="o">-</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="p">(</span><span class="n">slope</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">K_nl</span><span class="o">.</span><span class="n">max</span><span class="p">():</span>
+        <span class="n">dt_lim</span> <span class="o">=</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">K_nl</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dt of </span><span class="si">{</span><span class="n">dt</span><span class="si">}</span><span class="s2"> may cause instability. Should be smaller than </span><span class="si">{</span><span class="n">dt_lim</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        
+        <span class="c1"># this computation follows Perron (2011)</span>
+        
+        <span class="c1"># compute zx and zxx at t_n:</span>
+        <span class="n">z_x</span> <span class="o">=</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span>
+        <span class="n">z_xx</span> <span class="o">=</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span> <span class="o">-</span> \
+            <span class="mi">2</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="n">term1</span> <span class="o">=</span> <span class="p">(</span><span class="n">z_xx</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="n">z_x</span> <span class="o">/</span> <span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">term2</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="p">(</span><span class="n">z_x</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="n">z_xx</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">S_c</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="p">(</span><span class="n">z_x</span><span class="o">/</span><span class="n">S_c</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">rho_ratio</span><span class="o">*</span><span class="n">uplift_rate</span><span class="o">*</span><span class="n">dt</span> <span class="o">+</span> \
+            <span class="n">dt</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="n">term1</span> <span class="o">+</span> <span class="n">term2</span><span class="p">)</span>
+        <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">t_steps</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="nonlin_diff_perron2011"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.nonlin_diff_perron2011">[docs]</a><span class="k">def</span> <span class="nf">nonlin_diff_perron2011</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
+    <span class="n">S_c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10e-15</span><span class="p">,</span>
+    <span class="n">uplift_rate</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+    <span class="n">rho_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the nonlinear diffusion</span>
+<span class="sd">    equation dz/dt = d/dx[f(x,k)dz/dx]. Where f(x,k) = k / (1-grad(z(x))/S_c)</span>
+<span class="sd">    using the Q-imp scheme proposed by </span>
+<span class="sd">    `Perron 2011 &lt;https://doi.org/10.1029/2010JF001801&gt;`_.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float | np.array</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr. If array, length</span>
+<span class="sd">            should equal the number of time steps taken.</span>
+<span class="sd">        S_c: float</span>
+<span class="sd">            Critical slope.</span>
+<span class="sd">        n: int</span>
+<span class="sd">            Exponent in the nonlinear transport term.</span>
+<span class="sd">        warning_eps: float</span>
+<span class="sd">            Print a warning message if slopes get more negative than this value.</span>
+<span class="sd">        uplift_rate: np.ndarray | float</span>
+<span class="sd">            Imposed uplift rate in m/kyr. Zero by default. If supplied as array,</span>
+<span class="sd">            len(uplift rate) == n_t must be True. No uplift is applied</span>
+<span class="sd">            at the boundaries.</span>
+<span class="sd">        rho_ratio: float</span>
+<span class="sd">            Ratio of rock density to sediment density. (Assuming that</span>
+<span class="sd">            the supplied uplift rate is a rock uplift rate, and rock</span>
+<span class="sd">            decreases in density while it is supplied to the landscape.)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># convert uplift_rate to array, if needed:</span>
+    <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">uplift_rate</span><span class="p">):</span>
+        <span class="n">uplift_rate_time_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_t</span><span class="p">,</span> <span class="n">uplift_rate</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">uplift_rate</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_t</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(uplift_rate) != n_t&quot;</span><span class="p">)</span>
+        <span class="n">uplift_rate_time_array</span> <span class="o">=</span> <span class="n">uplift_rate</span> 
+
+    <span class="c1"># convert k to array, if needed</span>
+    <span class="k">if</span> <span class="n">_is_numeric</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+        <span class="n">k_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_t</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="o">!=</span> <span class="n">n_t</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;len(k) != n_t&quot;</span><span class="p">)</span>
+        <span class="n">k_array</span> <span class="o">=</span> <span class="n">k</span>
+    
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="c1"># copy boundaries from intial profile</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">t_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">solver</span> <span class="o">=</span> <span class="n">TridiagonalElimination</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">))</span>
+    <span class="c1"># place boundary conditions:</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">z_init</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">uplift_rate_space_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">z_init</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="n">k</span> <span class="o">=</span> <span class="n">k_array</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># always of current time step...</span>
+        
+        <span class="c1"># no uplift at boundaries</span>
+        <span class="n">uplift_rate_space_array</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">uplift_rate_time_array</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># second and first derivative</span>
+        <span class="n">z_x</span> <span class="o">=</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span>
+        <span class="n">z_xx</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span>\
+            <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># if the original z_x has negative slopes, then those slopes are</span>
+        <span class="c1"># permitted. (e.g. for b&lt;0) Set warning_eps to np.nan</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">z_x</span><span class="o">&lt;</span><span class="n">warning_eps</span><span class="p">):</span> 
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;z_x=</span><span class="si">{</span><span class="n">z_x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &lt; 0: Can only be caused by instability.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># a = k, for comparability with Perron 2011.</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">S_c</span><span class="o">**</span><span class="n">n</span><span class="p">)</span>  <span class="c1"># introduced by Perron 2011.</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">b</span> <span class="o">*</span> <span class="n">z_x</span> <span class="o">**</span> <span class="n">n</span><span class="p">)</span>  <span class="c1"># introduced by Perron 2011.</span>
+
+        <span class="n">F_i</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">n</span><span class="o">*</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="o">*</span><span class="n">z_x</span><span class="o">**</span><span class="n">n</span><span class="p">)</span>  <span class="c1"># F_i^n</span>
+        
+        <span class="n">term1</span> <span class="o">=</span> <span class="n">k</span><span class="o">*</span><span class="n">c</span><span class="o">/</span><span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="mi">1</span><span class="o">+</span><span class="n">n</span><span class="o">*</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="o">*</span><span class="n">z_x</span><span class="o">**</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">term2</span> <span class="o">=</span> <span class="p">((</span><span class="n">n</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="n">n</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">k</span><span class="o">*</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">z_x</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">z_xx</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">dx</span><span class="p">))</span>
+        <span class="n">term3</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">b</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">c</span><span class="o">**</span><span class="mi">3</span><span class="o">*</span><span class="n">z_x</span><span class="o">**</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">z_xx</span><span class="p">)</span><span class="o">/</span><span class="n">dx</span>
+        
+        <span class="n">F_ip1</span> <span class="o">=</span> <span class="n">term1</span> <span class="o">+</span> <span class="n">term2</span> <span class="o">+</span> <span class="n">term3</span>  <span class="c1"># F_{i+1}^n</span>
+        <span class="n">F_im1</span> <span class="o">=</span> <span class="n">term1</span> <span class="o">-</span> <span class="n">term2</span> <span class="o">-</span> <span class="n">term3</span>  <span class="c1"># F_{i-1}^n</span>
+
+        <span class="c1"># f(z_i^n): this is the change in elevation at time step n,</span>
+        <span class="c1"># as stated by eq. (6) in Perron (2011)</span>
+        <span class="n">fzin</span> <span class="o">=</span> <span class="n">k</span><span class="o">*</span><span class="p">(</span><span class="n">z_xx</span><span class="o">*</span><span class="n">c</span> <span class="o">+</span> <span class="n">n</span><span class="o">*</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="o">**</span><span class="mi">2</span><span class="o">*</span><span class="n">z_x</span><span class="o">**</span><span class="n">n</span><span class="o">*</span><span class="n">z_xx</span><span class="p">)</span> <span class="o">+</span> \
+            <span class="n">rho_ratio</span><span class="o">*</span><span class="n">uplift_rate_space_array</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># build tridiagonal matrix</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_im1</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_i</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_ip1</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
+            <span class="n">dt</span><span class="o">*</span><span class="p">(</span><span class="n">fzin</span><span class="o">-</span><span class="n">F_im1</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> \
+            <span class="n">F_i</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> \
+            <span class="n">F_ip1</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:])</span>
+
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+
+        <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+        <span class="c1">#print(prof_matrix[i,:])</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">t_steps</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="nonlin_diff_gabet2021"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.nonlin_diff_gabet2021">[docs]</a><span class="k">def</span> <span class="nf">nonlin_diff_gabet2021</span><span class="p">(</span>
+    <span class="n">z_init</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">n_t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10e-15</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to calculate the evolution of a</span>
+<span class="sd">    one-dimensional surface morphology according to the nonlinear diffusion</span>
+<span class="sd">    equation dz/dt = d/dx[f(x,k)dz/dx]. Where f(x,k) = k * (dz/dx)**2, as </span>
+<span class="sd">    proposed by `Gabet et al. 2021 &lt;https://doi.org/10.1029/2020JF005858&gt;`_ </span>
+<span class="sd">    using the Q-imp scheme of Perron 2011.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_init: np.ndarray</span>
+<span class="sd">            Initial elevation profile, assumed to be evenly spaced with</span>
+<span class="sd">            distances dx and boundary elevations that will not change at</span>
+<span class="sd">            z_init[0] and z_init[-1].</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between adjacent elevation values in meters,</span>
+<span class="sd">            assumed to be constant.</span>
+<span class="sd">        dt: float</span>
+<span class="sd">            Size of the time step taken, assumed to be constant. In kilo-years.</span>
+<span class="sd">        n_t: int</span>
+<span class="sd">            Number of timesteps. The oldest age will consequently be dt*n_t.</span>
+<span class="sd">        k: float</span>
+<span class="sd">            Diffusivity constant in m^2 / kyr.</span>
+<span class="sd">        warning_eps: float</span>
+<span class="sd">            Print a warning if slopes get more negative than this value.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        prof_matrix: np.ndarray</span>
+<span class="sd">            Matrix containing rows of profiles, first row being the initial</span>
+<span class="sd">            profile, last row being the profile at time dt*n_t.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            1D array containing time steps at which the profile was calculated.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">prof_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">)))</span>
+    <span class="n">prof_matrix</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">z_init</span>
+
+    <span class="c1"># copy boundaries from intial profile</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prof_matrix</span><span class="p">[:,</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_init</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">t_steps</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">solver</span> <span class="o">=</span> <span class="n">TridiagonalElimination</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z_init</span><span class="p">))</span>
+    <span class="c1"># place boundary conditions:</span>
+    <span class="n">solver</span><span class="o">.</span><span class="n">r</span> <span class="o">=</span> <span class="n">z_init</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_t</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+
+        <span class="n">z_x</span> <span class="o">=</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">dx</span><span class="p">)</span>
+        <span class="n">z_xx</span> <span class="o">=</span> \
+            <span class="p">(</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:]</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span><span class="o">/</span>\
+            <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">z_x</span><span class="o">&lt;</span><span class="n">warning_eps</span><span class="p">):</span> <span class="c1"># floating point stuff...</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;z_x=</span><span class="si">{</span><span class="n">z_x</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> &lt; 0: Can only be caused by instability.&quot;</span><span class="p">)</span>
+
+        <span class="n">F_i</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">4</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">z_x</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">F_ip1</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">z_x</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">dx</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">k</span><span class="o">*</span><span class="n">z_xx</span><span class="p">)</span><span class="o">/</span><span class="n">dx</span>
+        <span class="n">F_im1</span> <span class="o">=</span> <span class="n">F_ip1</span>
+        <span class="c1"># f(z_i^n) erosion rate:</span>
+
+        <span class="n">erosion_rate</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">k</span><span class="o">*</span><span class="n">z_x</span><span class="o">*</span><span class="n">z_xx</span>
+
+        <span class="c1"># build tridiagonal matrix</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">a</span><span class="p">[:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_im1</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">b</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_i</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">c</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="o">-</span><span class="n">dt</span><span class="o">*</span><span class="n">F_ip1</span>
+        <span class="n">solver</span><span class="o">.</span><span class="n">r</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> \
+            <span class="n">dt</span><span class="o">*</span><span class="p">(</span><span class="n">erosion_rate</span><span class="o">-</span><span class="n">F_im1</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,:</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="o">-</span> \
+            <span class="n">F_i</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> \
+            <span class="n">F_ip1</span><span class="o">*</span><span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">:])</span>
+
+        <span class="n">prof_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:]</span><span class="o">=</span> <span class="n">solver</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+
+        <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">dt</span>
+
+        <span class="c1">#print(prof_matrix[i,:])</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">prof_matrix</span><span class="p">,</span> <span class="n">t_steps</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="animate_profile_diffusion"><a class="viewcode-back" href="../../riserfit.html#riserfit.diffusion.animate_profile_diffusion">[docs]</a><span class="k">def</span> <span class="nf">animate_profile_diffusion</span><span class="p">(</span>
+    <span class="n">z_nonlin_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">t_steps</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span>
+    <span class="n">d_nonlin</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+    <span class="n">d_opt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+    <span class="n">z_opt</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Profile&quot;</span><span class="p">,</span>
+    <span class="n">outputgif</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">outputname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a GIF based on a precomputed profile diffusion evolution.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        z_nonlin_matrix: np.ndarray</span>
+<span class="sd">            Profile at different time steps.</span>
+<span class="sd">        t_steps: np.ndarray</span>
+<span class="sd">            The time steps.</span>
+<span class="sd">        dx: float</span>
+<span class="sd">            Spacing between computed grid points. Used if no d_nonlin</span>
+<span class="sd">            is supplied.</span>
+<span class="sd">        d_nonlin: np.ndarray</span>
+<span class="sd">            Spacing along the calculated profile.</span>
+<span class="sd">        d_opt: np.ndarray</span>
+<span class="sd">            Optional, the original recorded profile elevations.</span>
+<span class="sd">        z_op: np.ndarray</span>
+<span class="sd">            Optional, the original recorded profile distances.</span>
+<span class="sd">        name: str</span>
+<span class="sd">            Profile name.</span>
+<span class="sd">        outputgif: bool</span>
+<span class="sd">            Whether to output the animation as a GIF.</span>
+<span class="sd">        outputname: str</span>
+<span class="sd">            The subdirectory and name of the file.</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">animate</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;t = </span><span class="si">{</span><span class="n">t_steps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> kyr&quot;</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">d_opt</span><span class="p">,</span> <span class="n">z_opt</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">d_nonlin</span><span class="p">,</span> <span class="n">z_nonlin_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">,:],</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;solid&quot;</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ax.legend(frameon=False, title=&quot;Diffusion&quot;)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;left&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Relative elevation [m]&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Relative distance [m]&quot;</span><span class="p">)</span>
+        <span class="c1">#ax.set_ylim(z_nl[0,:].min</span>
+
+    <span class="c1"># distances:</span>
+    <span class="k">if</span> <span class="n">d_nonlin</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,):</span>
+        <span class="c1"># construct d using dx</span>
+        <span class="n">n_d</span> <span class="o">=</span> <span class="n">z_nonlin_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="c1"># number of d points needed</span>
+
+        <span class="n">d_nonlin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="n">n_d</span><span class="p">)</span><span class="o">*</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">)</span>
+        <span class="n">d_nonlin</span> <span class="o">=</span> <span class="n">d_nonlin</span> <span class="o">-</span> <span class="n">d_nonlin</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">/</span><span class="mi">2</span>
+
+
+    <span class="n">fg</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+
+    <span class="n">ani</span> <span class="o">=</span> <span class="n">FuncAnimation</span><span class="p">(</span><span class="n">fg</span><span class="p">,</span> <span class="n">animate</span><span class="p">,</span> <span class="n">frames</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">t_steps</span><span class="p">),</span> <span class="n">interval</span><span class="o">=</span><span class="mf">1e-6</span><span class="p">,</span>
+        <span class="n">repeat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+    <span class="n">writergif</span> <span class="o">=</span> <span class="n">PillowWriter</span><span class="p">(</span><span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">outputgif</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">ani</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;//&quot;</span><span class="o">+</span><span class="n">outputname</span><span class="o">+</span><span class="s2">&quot;diffusion_animation.gif&quot;</span><span class="p">,</span>
+                 <span class="n">writer</span><span class="o">=</span><span class="n">writergif</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Lennart Grimm.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
