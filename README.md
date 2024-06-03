@@ -10,14 +10,14 @@ python -m venv riserfit
 cd riserfit/Scripts
 activate
 
-pip install git+https://git-int.gfz-potsdam.de/lgrimm/riserfitTesting.git
+pip install git+https://github.com/lengri/riserfit.git
 ```
 Installation on Linux-based distributions should be similar:
 ```
 python -m venv riserfit
 source riserfit/bin/activate
 
-pip install git+https://git-int.gfz-potsdam.de/lgrimm/riserfitTesting.git
+pip install git+https://github.com/lengri/riserfit.git
 ```
 ## Verifying the installation
 You can test the installation by running Python from the console and importing
