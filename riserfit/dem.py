@@ -20,6 +20,7 @@ class Constructor_Extractor:
 	"""
  	Internal class for handeling profile building and extraction from a
 	DEM.
+	This function should never be called by a package user.
   	"""
 	def __init__(
 		self,
@@ -32,23 +33,23 @@ class Constructor_Extractor:
 		swath_spacing: float
 	) -> None:
 		"""
-		Initialize a Constructor_Extractor instance.
+		Initialize a ``Constructor_Extractor`` instance.
   
 		Parameters:
 		-----------
 			centerpoints: list
-				List tuples of centerpoints (x, y).
+				List tuples of centerpoints :math:`(x, y)`.
 			directions: list
-				List of tuples of profile orientations (x, y).
+				List of tuples of profile orientations :math:`(x, y)`.
 			start_end_points: bool
 				If true, the centerpoints list is interpreted as a
 				list of tuples where tuple i indicates the start point, 
-				and tuple i+1 indicates the end point of a profile.
+				and tuple :math:`i+1` indicates the end point of a profile.
 			n_points_array: np.ndarray
 				Number of points in each profile.
 			spacing_array: np.ndarray
 				The spacing between points in each profile. Note: this
-				parameter is ignored if start_end_points == True.
+				parameter is ignored if ``start_end_points == True``.
 			swath_number: float
 				The number of parallel profile lines for each profile.
 			swath_spacing: float
@@ -71,7 +72,7 @@ class Constructor_Extractor:
 	) -> Self:
 		"""
 		Build profiles based on the provided data.
-
+  
 		Parameters:
 		-----------
 			None
@@ -79,8 +80,8 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The Constructor\_Extractor instance.
-		"""
+				The ``Constructor_Extractor`` instance.
+  		"""
 		p_lines = []
 		# center lines for both start_end_point true or false,
 		# the correct spacing should be chosen in the dem.py script.
@@ -115,7 +116,7 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The Constructor_Extractor instance.
+				The ``Constructor_Extractor`` instance.
     	"""
 
 		# assuming that swath_number > 0...
@@ -167,7 +168,7 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The Constructor_Extractor instance.
+				The ``Constructor_Extractor`` instance.
   		"""
 		if self.swath_number == 0:
 			# simple decomposition in one step...
@@ -211,7 +212,7 @@ class Constructor_Extractor:
 
 		"""
 		Re-form a nested list, grouped according to profiles, swaths, points.
-		This function relates to build_decomposed_point_list().
+		This function relates to ``Constructor_Extractor.build_decomposed_point_list()``.
   
 		Parameters:
 		-----------
@@ -221,7 +222,7 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The Constructor_Extractor instance.
+				The ``Constructor_Extractor`` instance.
   		"""
 		profile_z_list = []
 		z = np.array(z)
@@ -313,8 +314,8 @@ def construct_z_profiles_from_centerpoints(
 		n_points: int
 			Number of points to be projected in each direction from centerpoint
 			defined by the .csv file in pointfilepath. Total number of points
-			will be 2 * n_points + 1.
-			Alternatively, if n_points is a string, it is interpreted as
+			will be :math:`2 \cdot n_points + 1`.
+			Alternatively, if ``n_points`` is a string, it is interpreted as
 			the .csv column containing n_points information for each 
 			center point separately.
 		spacing: float or str
@@ -324,7 +325,7 @@ def construct_z_profiles_from_centerpoints(
 			profile separately.
 		swath_number: int
 			Number of parallel lines extracted for each profile. Total number
-			is 2 * swath_number + 1.
+			is :math:`2 \cdot swath_number + 1`.
 		swath_spacing: float
 			Distance between the swath lines of a profile.
 		band_no: int
@@ -336,7 +337,7 @@ def construct_z_profiles_from_centerpoints(
 		method: str
 			Interpolation method for extracting values from the DEM. Default
 			is linear interpolation. Can take any values recognized by
-			scipy.interpolate.interpn().
+			``scipy.interpolate.interpn()``.
 		savedir: str
 			File path to directory where files are to be saved. If it does not
 			exist, the directory is created.
@@ -347,10 +348,10 @@ def construct_z_profiles_from_centerpoints(
 	--------
 		profiles: list
 			A list of pandas dataframes that can be forwarded into
-			riserfit.initialize_riser_class().
+			``riserfit.initialize_riser_class()``.
 		names: list
 			A list of profile names that can be forwarded into
-			riserfit.initialize_riser_class().
+			``riserfit.initialize_riser_class()``.
 	"""
 
 	df = pd.read_csv(os.getcwd()+"\\"+pointfilepath, **pd_kwargs)
@@ -618,14 +619,14 @@ def calculate_aspect(
 
 	"""
 	Calculate the local aspect of a list of points given in row-column format
-	(y, x) on a DEM in the same coordinate system.
+	:math:`(y, x)` on a DEM in the same coordinate system.
 
 	Parameters:
 	-----------
 		rasterpath: str
 			Path to the DEM.
 		rc_points: list[tuple]
-			List of points stored as (y, x) tuples.
+			List of points stored as :math:`(y, x)` tuples.
 		band_no: int
 			Band of the input raster to be interpreted as the DEM.
 		smooth_first: bool
@@ -635,13 +636,13 @@ def calculate_aspect(
 		method: str
 			Method used to calculate and interpolate the elevation values at the
 			wanted points. Can take any value permitted by
-			scipy.interpolate.interpn().
+			``scipy.interpolate.interpn()``.
 
 	Returns:
 	--------
 		azimuths: list[tuple]
-			List of (y, x) tuples representing the vector pointing in the
-			direction of steepest descent, in the same order as rc_points.
+			List of :math:`(y, x)` tuples representing the vector pointing in the
+			direction of steepest descent, in the same order as ``rc_points``.
 	"""
 	raster = rio.open(os.getcwd()+"\\"+rasterpath, **rio_open_params)
 	dem = raster.read(band_no)
@@ -712,11 +713,11 @@ def extrapolate_line_from_point(
 	-----------
 		centerpoint: tuple
 			The point of origin. A profile will be constructed with n_points in
-			the direction of vector and -1*vector for a total of 2*n_points+1
+			the direction of vector and :math:`-1\cdot vector` for a total of :math:`2\cdot n_points+1`
 			points.
 		direction: tuple
 			A tuple defining the orientation of the profile line.
-			The line is constructed as new_points = centerpoint+a*direction.
+			The line is constructed as :math:`new_points = centerpoint+a\cdot direction`.
 		n_points: int
 			Number of point to be returned in each direction of the centerpoint.
 		spacing: float
@@ -751,7 +752,7 @@ def sample_raster_at_points(
 	rc_points: np.array,
 	method: str = "linear",
 	band_no: int = 1,
-	**rio_open_params
+	rio_open_dict: dict = {}
 ) -> np.ndarray:
 	"""
 	This function samples a raster that can be read by rasterio at the required
@@ -771,7 +772,7 @@ def sample_raster_at_points(
 			Default is linear interpolation.
 		band_no: int
 			Specifies the band of the raster that will be read as the DEM.
-		**rio_open_params:
+		rio_open_dict: dict
 			Any parameters relating to rasterio.open()
 
 	Returns:
@@ -781,7 +782,7 @@ def sample_raster_at_points(
 	"""
 
 	# get coordinates of rio_raster rows, cols:
-	raster = rio.open(os.getcwd()+"\\"+rasterpath, **rio_open_params)
+	raster = rio.open(os.getcwd()+"\\"+rasterpath, **rio_open_dict)
 	dem = raster.read(band_no)
 	row_id = [i for i in range(0, dem.shape[0])]
 	col_id = [i for i in range(0, dem.shape[1])]
@@ -824,7 +825,7 @@ def load_profile_csvs(
 			Path from current working directory to the directory containing
 			the .csv files to be loaded.
 		pandas_csv_dir: dir
-			Any arguments passed tp pandas.read_csv().
+			Any arguments passed to ``pandas.read_csv()``.
 
 	Returns:
 	--------

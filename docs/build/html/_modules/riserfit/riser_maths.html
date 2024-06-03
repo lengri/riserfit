@@ -47,7 +47,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">Licence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../riserfit.html">riserfit documentation</a></li>
 </ul>
 
         </div>
@@ -490,7 +491,7 @@
 <span class="sd">    Parameters:</span>
 <span class="sd">    -----------</span>
 <span class="sd">        func: Callable</span>
-<span class="sd">            Function of the form func(x_values, **params).</span>
+<span class="sd">            Function of the form func(x_values, ...).</span>
 <span class="sd">        x_values: ArrayLike</span>
 <span class="sd">            x values at which the partial derivatives are</span>
 <span class="sd">            evaluated.</span>
@@ -577,7 +578,7 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Converts a jacobian to a covariance matrix based on </span>
-<span class="sd">    Cov = sos*(J^t * J)^(-1)</span>
+<span class="sd">    :math:`Cov = sos\cdot(J^t \cdot J)^(-1)`</span>
 <span class="sd">    </span>
 <span class="sd">    Parameters:</span>
 <span class="sd">    -----------</span>
@@ -608,7 +609,7 @@
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Expects a list of arrays, each of len(x_vals). Will combine the KDEs and</span>
-<span class="sd">    compute the &quot;maximum-likelihood&quot; of all KDEs. Returns the x value and id.</span>
+<span class="sd">    compute the maximum-likelihood of all KDEs. Returns the x value and id.</span>
 <span class="sd">    </span>
 <span class="sd">    Parameters:</span>
 <span class="sd">    -----------</span>
@@ -1037,6 +1038,14 @@
     <span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        EXPERIMENTAL; DO NOT USE</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            None</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            None</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s2">&quot;construct_paired_t_kde is experimental and should not be used!&quot;</span><span class="p">)</span>
         <span class="c1"># from inverse CDFs, take x values corresponding to quantiles</span>
@@ -1161,7 +1170,7 @@
 <span class="sd">            Step size of the averaged PDF.</span>
 <span class="sd">        attr: str</span>
 <span class="sd">            The KDE or PDF to be averaged for each StatsMC. Default is</span>
-<span class="sd">            &quot;k_kde&quot;. Must match an existing instance attribute.</span>
+<span class="sd">            ``k_kde``. Must match an existing instance attribute.</span>
 <span class="sd">            </span>
 <span class="sd">    Returns: </span>
 <span class="sd">    --------</span>
@@ -1182,6 +1191,8 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Class that contains basic statistical tools for the use of probability</span>
 <span class="sd">    density functions.</span>
+<span class="sd">    This class is mainly for internal use. Some internal functionalities may not be</span>
+<span class="sd">    entirely correct in a strictly mathematical sense.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -1189,7 +1200,7 @@
         <span class="n">pdf</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize a DistributionFromInterpolator instance.</span>
+<span class="sd">        Initialize a ``DistributionFromInterpolator`` instance.</span>
 
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
@@ -1241,7 +1252,7 @@
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
 <span class="sd">            resolution: float</span>
-<span class="sd">                The resolution in x. If None, values are sampled from self.x.</span>
+<span class="sd">                The resolution in x. If ``None``, values are sampled from self.x.</span>
 <span class="sd">            n: float</span>
 <span class="sd">                Sample size.</span>
 

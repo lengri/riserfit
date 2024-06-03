@@ -413,7 +413,7 @@ def calculate_function_jacobian(
     Parameters:
     -----------
         func: Callable
-            Function of the form func(x_values, **params).
+            Function of the form func(x_values, ...).
         x_values: ArrayLike
             x values at which the partial derivatives are
             evaluated.
@@ -500,7 +500,7 @@ def riser_covariance_matrix(
 ) -> np.ndarray:
     """
     Converts a jacobian to a covariance matrix based on 
-    Cov = sos*(J^t * J)^(-1)
+    :math:`Cov = sos\cdot(J^t \cdot J)^(-1)`
     
     Parameters:
     -----------
@@ -531,7 +531,7 @@ def maximum_combined_kde(
 ) -> Tuple[float, int]:
     """
     Expects a list of arrays, each of len(x_vals). Will combine the KDEs and
-    compute the "maximum-likelihood" of all KDEs. Returns the x value and id.
+    compute the maximum-likelihood of all KDEs. Returns the x value and id.
     
     Parameters:
     -----------
@@ -960,6 +960,14 @@ class StatsMC:
     ):
         """
         EXPERIMENTAL; DO NOT USE
+        
+        Parameters:
+        -----------
+            None
+        
+        Returns:
+        --------
+            None
         """
         warnings.warn("construct_paired_t_kde is experimental and should not be used!")
         # from inverse CDFs, take x values corresponding to quantiles
@@ -1084,7 +1092,7 @@ def construct_averaged_kde(
             Step size of the averaged PDF.
         attr: str
             The KDE or PDF to be averaged for each StatsMC. Default is
-            "k_kde". Must match an existing instance attribute.
+            ``k_kde``. Must match an existing instance attribute.
             
     Returns: 
     --------
@@ -1105,6 +1113,8 @@ class DistributionFromInterpolator():
     """
     Class that contains basic statistical tools for the use of probability
     density functions.
+    This class is mainly for internal use. Some internal functionalities may not be
+    entirely correct in a strictly mathematical sense.
     """
     def __init__(
         self, 
@@ -1112,7 +1122,7 @@ class DistributionFromInterpolator():
         pdf: np.ndarray
     ) -> None:
         """
-        Initialize a DistributionFromInterpolator instance.
+        Initialize a ``DistributionFromInterpolator`` instance.
 
         Parameters:
         -----------
@@ -1164,7 +1174,7 @@ class DistributionFromInterpolator():
         Parameters:
         -----------
             resolution: float
-                The resolution in x. If None, values are sampled from self.x.
+                The resolution in x. If ``None``, values are sampled from self.x.
             n: float
                 Sample size.
 
