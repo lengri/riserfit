@@ -614,7 +614,7 @@ def calculate_aspect(
 	smooth_first: bool = False,
 	method: str = "linear",
 	verbose: bool = True,
-	**rio_open_params
+	rio_open_dict: dict = {}
 ) -> list[tuple]:
 
 	"""
@@ -637,6 +637,8 @@ def calculate_aspect(
 			Method used to calculate and interpolate the elevation values at the
 			wanted points. Can take any value permitted by
 			``scipy.interpolate.interpn()``.
+		rio_open_dict: dict
+			Any additional parameters passed on to rio.open().
 
 	Returns:
 	--------
@@ -644,7 +646,7 @@ def calculate_aspect(
 			List of :math:`(y, x)` tuples representing the vector pointing in the
 			direction of steepest descent, in the same order as ``rc_points``.
 	"""
-	raster = rio.open(os.getcwd()+"\\"+rasterpath, **rio_open_params)
+	raster = rio.open(os.getcwd()+"\\"+rasterpath, **rio_open_dict)
 	dem = raster.read(band_no)
 	# get spacings along x, y
 	row_id = [i for i in range(0, dem.shape[0])]
