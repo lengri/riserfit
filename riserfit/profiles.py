@@ -100,7 +100,7 @@ def read_profile_files(
         # use the xy_distances function
         x = df[df_x].to_list()
         y = df[df_y].to_list()
-        d, dd = xy_distances(x, y, True)
+        d, dd = xy_distances(x, y)
         df["d"] = d 
         df["dd"] = dd
         files.append(df)
