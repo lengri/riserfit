@@ -3405,12 +3405,18 @@ class Riser:
             for (key, val) in attr:
                 # get base riser attribute
                 if type(val) == list:
-                    attr_base = getattr(self, key)
-                    # get to be added attr
-                    attr_r = getattr(r, key)
-                    attr_out = attr_base + attr_r
-                    setattr(self, key, attr_out)
-                
+                    try: 
+                        attr_base = getattr(self, key)
+                        if type(attr_base) != list:
+                            warnings.warn(f"Casting base attribute {key} to list")
+                            attr_base = list(attr_base)
+                        # get to be added attr
+                        attr_r = getattr(r, key)
+                        attr_out = attr_base + attr_r
+                        setattr(self, key, attr_out)
+                    except AttributeError as E:
+                        warnings.warn(f"Could not find attribute {key}, ignoring")
+ 
         return self
         
     def save_Riser_instance_structure(
