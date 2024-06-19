@@ -880,6 +880,8 @@ class Riser:
         and stop indices or a list of profile names or indices to define the
         profiles to be transferred to the subset. All attributes of the original
         instance are preserved.
+        
+        The extraction process is limited to attributes of len(self.name).
 
         Parameters:
         -----------
@@ -930,7 +932,7 @@ class Riser:
 
         for i, key in enumerate(attribute_keys):
             attribute = getattr(self, key)
-            if type(attribute) == list and len(attribute) > 0:
+            if type(attribute) == list and len(attribute) == len(self.name):
                 attribute_subset = [attribute[i] for i in indices]
                 setattr(new_riser, key, attribute_subset)
 
