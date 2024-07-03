@@ -870,27 +870,17 @@ class Riser:
 
     def extract_subset(
         self,
-        start = None,
-        stop = None,
-        profiles = None
+        profiles = []
     ) -> Riser:
         """
         extract_subset: Function to construct a new Riser class object with
-        a subset of profiles from the original class instance. Use either start
-        and stop indices or a list of profile names or indices to define the
-        profiles to be transferred to the subset. All attributes of the original
+        a subset of profiles from the original class instance.  All attributes of the original
         instance are preserved.
         
         The extraction process is limited to attributes of len(self.name).
 
         Parameters:
         -----------
-            start: int or str
-                If of type int, position of the first profile to be subset.
-                If of tpye str, name of the first profile to be subset.
-            stop: int or str
-                If of type int, position of the last profile to be subset.
-                If of type str, name of the last profile to be subset.
             profiles: list of int or str
                 List containing either the index positions or names of profiles
                 to be subset.
@@ -902,35 +892,22 @@ class Riser:
 
         """
 
-        # make a list of indices:
-
-        if type(start) != type(stop):
-                raise Exception("ERROR: start, stop must be of same type.")
-        elif type(start) is int:
-            indices = [i for i in range(start, stop+1)]
-        elif type(start) is str:
-            startID = self.name.index(start)
-            stopID = self.name.index(stop)
-            indices = [i for i in range(startID, stopID+1)]
-        elif start != None:
-            raise Exception("ERROR: start, stop must be either str or int.")
-
-        if profiles != None and type(profiles) != list:
-            raise Exception("ERROR: profiles must be either list or None")
-        elif type(profiles) is list and type(profiles[0]) is int:
+        # return empty instance if no profiles are specified
+        if profiles == []: return Riser([], [], [], [], self.identifier)
+        
+        # if entries are str, treat as profile names
+        if type(profiles[0]) == str: 
+            indices = [self.name.index(p) for p in profiles]
+        else: # expect ints here
             indices = profiles
-        elif type(profiles) is list and type(profiles[0]) is str:
-            indices = [self.name.index(p_name) for p_name in profiles]
 
         # create a new, empty instance of riser class:
-
-        new_riser = Riser([], [], [], [], [], "")
+        new_riser = Riser([], [], [], [], [], self.identifier)
 
         # get all other attributes:
-
         attribute_keys = self.__dict__.keys()
 
-        for i, key in enumerate(attribute_keys):
+        for key in attribute_keys:
             attribute = getattr(self, key)
             if type(attribute) == list and len(attribute) == len(self.name):
                 attribute_subset = [attribute[i] for i in indices]
