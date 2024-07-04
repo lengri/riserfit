@@ -289,8 +289,8 @@ def compute_misfit(
     of Avouac (1993). d_off and z_off are set to zero by default, but should
     be varied during curve fitting.
 
-    Parameters
-    ----------
+    Parameters:
+    -----------
         kt: float
             Diffusion age of the analytical profile.
         d_emp: np.array
@@ -1221,7 +1221,7 @@ def distribution_from_sample(
     # determine bounds:
     if bounds == (0, 0):
         bounds = (sample_sorted[0], sample_sorted[-1])
-    print(bounds)
+
     y_cdf = np.linspace(1/n, 1, n)
     x_cdf = np.arange(bounds[0], bounds[1]+resolution, resolution)  
     
