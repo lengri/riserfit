@@ -893,7 +893,7 @@ class Riser:
         """
 
         # return empty instance if no profiles are specified
-        if profiles == []: return Riser([], [], [], [], self.identifier)
+        if profiles == []: return Riser([], [], [], [], [], self.identifier)
         
         # if entries are str, treat as profile names
         if type(profiles[0]) == str: 
