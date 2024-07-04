@@ -452,7 +452,7 @@ def nonlin_diff_perron2011(
     n_t: float,
     k: Union[float, np.ndarray],
     S_c: float,
-    n: float,
+    n: float = 2.,
     warning_eps: float = -10e-15,
     uplift_rate: Union[np.ndarray, float] = 0.,
     rho_ratio: float = 1.
@@ -536,6 +536,8 @@ def nonlin_diff_perron2011(
 
     uplift_rate_space_array = np.zeros(z_init.shape)
     
+    WARNING_FLAG = True 
+    
     for i in range(1, n_t+1):
 
         k = k_array[i-1] # always of current time step...
@@ -551,7 +553,8 @@ def nonlin_diff_perron2011(
 
         # if the original z_x has negative slopes, then those slopes are
         # permitted. (e.g. for b<0) Set warning_eps to np.nan
-        if any(z_x<warning_eps): 
+        if any(z_x<warning_eps) and WARNING_FLAG: 
+            WARNING_FLAG = False
             warnings.warn(f"z_x={z_x.min():.4f} < 0: Can only be caused by instability.")
 
         # a = k, for comparability with Perron 2011.
@@ -644,6 +647,7 @@ def nonlin_diff_gabet2021(
     # place boundary conditions:
     solver.r = z_init.copy()
 
+    WARNING_FLAG = True
     for i in range(1, n_t+1):
 
         z_x = (prof_matrix[i-1,2:]-prof_matrix[i-1,:-2])/(2*dx)
@@ -651,7 +655,8 @@ def nonlin_diff_gabet2021(
             (prof_matrix[i-1,2:]-2*prof_matrix[i-1,1:-1]+prof_matrix[i-1,:-2])/\
             (dx**2)
 
-        if any(z_x<warning_eps): # floating point stuff...
+        if any(z_x<warning_eps) and WARNING_FLAG: # floating point stuff...
+            WARNING_FLAG = False
             warnings.warn(f"z_x={z_x.min():.4f} < 0: Can only be caused by instability.")
 
         F_i = (-4*k*z_x) / (dx**2)
