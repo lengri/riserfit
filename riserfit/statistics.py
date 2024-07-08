@@ -264,8 +264,11 @@ class RiserPlayground(Riser):
         theta: Union[float, list], 
         d_off: Union[float, list] = 0,
         z_off: Union[float, list] = 0,
-        names: Union[str, list] = "",
-        uniform_d: bool = True
+        name: Union[str, list] = "",
+        uniform_d: bool = True,
+        use_linear: bool = True,
+        max_dt: float = 0.5,
+        nonlin_S_c: float = 1.
     ) -> Self:
         """
         Create riser profiles based on user-defined parameters. 
@@ -288,7 +291,7 @@ class RiserPlayground(Riser):
                 Shift(s) applied to d after elevations are calculated.
             z_off: float | list
                 Shift(s) applied to z after elevations are calculated.
-            names: str | list
+            name: str | list
                 Name(s) for each riser.
             uniform_d: bool
                 Defines the role of d: If True, d is interpreted as a 
@@ -296,6 +299,14 @@ class RiserPlayground(Riser):
                 If False, interpreted as a nested list wherein each
                 element defines a unique distance array used for creating
                 riser profiles.
+            use_linear: bool
+                If `True`, nterpret kt as linear diffusion age. If `False`,
+                assume nonlinear diffusion age. Computing nonlinear profiles
+                may take a significant amount of time.
+            max_dt: float
+                Maximum time step size allowed when building nonlinear profiles.
+            nonlin_S_c: float
+                Critical slope used for nonlinear riser profiles.
 
         Returns:
         --------
@@ -303,90 +314,152 @@ class RiserPlayground(Riser):
                 The RiserPlayground instance.
         """
 
-        # check if any of the parameters are numeric 
-        # (can be converted to float)
-        params = [kt, a, b, theta, d_off, z_off]
+        # ignore d for numeric checking
+        in_param_dict = {
+            "kt": kt,
+            "a": a,
+            "b": b,
+            "theta": theta,
+            "d_off": d_off,
+            "z_off": z_off,
+            "S_c": nonlin_S_c
+        }
+
+        # store outputs here
+        out_param_dict = {
+            "d": [],
+            "kt": [],
+            "a": [],
+            "b": [],
+            "theta": [],
+            "d_off": [],
+            "z_off": [],
+            "S_c": [],
+            "name": []
+        }
+        
+        # check if the input parameters can be converted to float
         par_numeric = np.array(
-            [_is_numeric(p) for p in params]
+            [_is_numeric(p) for p in in_param_dict.values()]
         )
+        # get list parameters
+        list_params = [
+            key for i, key in enumerate(in_param_dict.keys()) 
+            if not par_numeric[i]
+        ]
+        # check if lengths are equal.
+        list_lengths = np.array([
+            len(in_param_dict[key]) for key in list_params
+        ])
+        
+        # assert that lists have same length:
+        try:
 
-        if len(np.where(par_numeric==False)[0]) == 0 and uniform_d:
+            if np.any(list_lengths != list_lengths[0]):
+                raise Exception("Input arguments do not have same shapes")
 
-            # all inputs are numbers, create profile and end
+            # some parameters are lists, some aren't -> Cast to same shapes now.
+            shape = list_lengths[0]
+            
+            for key in in_param_dict.keys():
+                if key not in list_params:
+                    out_param_dict[key] = [in_param_dict[key]]*shape
+                else:
+                    out_param_dict[key] = in_param_dict[key]
+        
+        # all parameters must be floats...
+        except IndexError as E:
 
-            z = analytical_profile(
-                np.array(d), kt, a, b, theta
-            )
-            d = [d + d_off]
-            z = [z + z_off]
-            self.d = d
-            self.z = z 
-            self.name = ["profile0"]
-
-            return # end routine
-
+            out_param_dict["d"].append(np.array(d))
+            out_param_dict["kt"].append(kt)
+            out_param_dict["a"].append(a)
+            out_param_dict["b"].append(b)
+            out_param_dict["theta"].append(theta)
+            out_param_dict["d_off"].append(d_off)
+            out_param_dict["z_off"].append(z_off)
+            out_param_dict["S_c"].append(nonlin_S_c)
+            out_param_dict["name"].append(name)
+            
+        except Exception as E:
+            raise Exception(f"Could not resolve parameters: {E}")
+        
+        # special cases: names and d
+        if uniform_d:
+            out_param_dict["d"] = [d]*len(out_param_dict["kt"])
         else:
-            # some parameters are floats, some are lists...
-            # duplicate the floats to same length as the lists
-
-            # check if all lists have the same length:
-            list_param = [params[i] for i, pn in enumerate(par_numeric)
-                 if not pn]
-            len_list_param = [len(list_p) for list_p in list_param]
-
-            # check if uniform_d is True:
-
-            if uniform_d:
-                ds = [d]*len_list_param[0]
-
+            if len(list(d)) == len(out_param_dict["kt"]):
+                out_param_dict["d"] = list(d)
             else:
-                ds = list(d) 
-            # add ds to len_list_param and list_param
-            list_param = [ds] + list_param 
-
-            len_list_param = np.array([len(ds)] + len_list_param)
-
-            if np.any(len_list_param != len_list_param[0]):
-                raise Exception("Input arguments do not have same lengths")
-
-            out_list = []
-            # convert params that are not list to lists...
-            for i, is_num in enumerate(par_numeric):
-                if is_num:
-                    p_l = [params[i]] * len(list_param[0])
-                    out_list.append(p_l)
-                else: 
-                    out_list.append(params[i])
-
-            # append d to out_list:
-            out_list = [list_param[0]] + out_list
-
+                raise Exception("Shape of non-uniform d does not match other parameters")
+        
+        # deal with names:
         # default: use number progression as name
-        if names == "":
-            out_names = [names+"p"+str(i) for i in range(0, len(out_list[0]))]
+        if name == "":
+            out_param_dict["name"] = [
+                "p"+str(i) 
+                for i in range(0, len(out_param_dict["kt"]))
+            ]
         else:
-            out_names = names
-        # check if names has correct length (in case user supplied)
-        if len(out_names) != len(out_list[0]):
-            raise Exception("Length of 'names' does not equal other parameters")
+            # check shape of name
+            if len(name) == len(out_param_dict["kt"]):
+                out_param_dict["name"] = list(name)
+            else:
+                raise Exception("Shape of name does not match other parameters")
 
         # construct profiles
-        z_list_shifted = []
-        d_list_shifted = []
-
-        for i, name in enumerate(out_names):
-            z = analytical_profile(
-                out_list[0][i], out_list[1][i], out_list[2][i], 
-                out_list[3][i], out_list[4][i]
-            )
-            d = out_list[0][i] + out_list[5][i]
-            z = z + out_list[6][i]
-            z_list_shifted.append(z)
-            d_list_shifted.append(d)
-
-        self.d = d_list_shifted
-        self.z = z_list_shifted
-        self.name = out_names
+        z_list_out = []
+        d_list_out = []
+        
+        # iterate over all parameters
+        zipper = zip(
+            out_param_dict["d"],
+            out_param_dict["kt"],
+            out_param_dict["a"],
+            out_param_dict["b"],
+            out_param_dict["theta"],
+            out_param_dict["z_off"],
+            out_param_dict["d_off"],
+            out_param_dict["S_c"]
+        )
+        
+        for (d, kt, a, b, theta, zoff, doff, Sc) in zipper:
+            
+            d_list_out.append(np.array(d) + doff)
+            
+            # build linear profiles
+            if use_linear:
+                
+                z_list_out.append(
+                    analytical_profile(
+                        d, kt, a, b, theta
+                    ) + zoff
+                )
+            
+            else:
+                
+                # build up nonlinear profiles
+                dx = d[1] - d[0] # assume uniform spacing in d.
+                z_init = analytical_profile(d, 0, a, b, theta)
+                
+                # number of time steps and step size
+                n = int(kt / max_dt) # this will give an age smaller than kt.
+                dt_last_step = kt - n*max_dt
+                
+                z_nl, _ = nonlin_diff_perron2011(
+                    z_init, dx, max_dt, n, 1, Sc, 2
+                )
+                
+                # calculate last time step
+                if dt_last_step > 0:
+                    z_nl, _ = nonlin_diff_perron2011(
+                        z_nl[-1,:], dx, dt_last_step, 1, 1, Sc, 2 
+                    )
+                    
+                z_list_out.append(z_nl[-1,:] + zoff)
+        
+        # append results
+        self.z = z_list_out 
+        self.d = d_list_out         
         
         return self
 
