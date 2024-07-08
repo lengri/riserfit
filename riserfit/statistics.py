@@ -436,7 +436,7 @@ class RiserPlayground(Riser):
                 )
             
             else:
-                
+
                 # build up nonlinear profiles
                 dx = d[1] - d[0] # assume uniform spacing in d.
                 z_init = analytical_profile(d, 0, a, b, theta)
@@ -446,13 +446,25 @@ class RiserPlayground(Riser):
                 dt_last_step = kt - n*max_dt
                 
                 z_nl, _ = nonlin_diff_perron2011(
-                    z_init, dx, max_dt, n, 1, Sc, 2
+                    z_init=z_init, 
+                    dx=dx, 
+                    dt=max_dt, 
+                    n_t=n, 
+                    k=1, 
+                    S_c=Sc, 
+                    n=2
                 )
                 
                 # calculate last time step
                 if dt_last_step > 0:
                     z_nl, _ = nonlin_diff_perron2011(
-                        z_nl[-1,:], dx, dt_last_step, 1, 1, Sc, 2 
+                        z_init=z_init, 
+                        dx=dx, 
+                        dt=dt_last_step, 
+                        n_t=1, 
+                        k=1, 
+                        S_c=Sc, 
+                        n=2
                     )
                     
                 z_list_out.append(z_nl[-1,:] + zoff)
@@ -460,6 +472,7 @@ class RiserPlayground(Riser):
         # append results
         self.z = z_list_out 
         self.d = d_list_out         
+        self.name = out_param_dict["name"]
         
         return self
 
