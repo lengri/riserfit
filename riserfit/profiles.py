@@ -34,9 +34,6 @@ from .riser_maths import *
 
 # Function to open a collection of profiles
 
-def void():
-    return None 
-
 def read_profile_files(
     filepath: str,
     infiles: list[str],
