@@ -2489,7 +2489,7 @@ class Riser:
         """
         # calculate upper_t_bounds
         if max_upper_t != None:
-            upper_t_bound = np.ones(len(self.nonlin_best_t))*upper_t_bound 
+            upper_t_bound = np.ones(len(self.nonlin_best_t))*max_upper_t 
         else:
             upper_t_bound = np.array(self.nonlin_best_t)+5000
 
@@ -2546,6 +2546,7 @@ class Riser:
                 warning_eps, z_nl_uncert, t_nl_uncert, misfit_cutoff,
                 float_multiplier
             )
+            
             # optimize for lower_t:
             try:
                 lower_t_opt = minimize(
