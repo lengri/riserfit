@@ -14,7 +14,7 @@ activate
 
 pip install git+https://github.com/lengri/riserfit.git
 ```
-Installation on Linux-based distributions should be similar:
+Installation on Linux-based distributions and on macOS is similar:
 ```
 python -m venv riserfit
 source riserfit/bin/activate
