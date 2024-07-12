@@ -233,6 +233,7 @@ def _lin_invert_uncertainty(
             if kt_lb <= 0:
                 kt_lb = 0
                 found_lb = True
+                break
             else:
                 geom_params["kt"] = kt_lb
                 z_at_kt = analytical_profile(d, **geom_params)
@@ -467,6 +468,7 @@ def _nonlin_invert_uncertainty(
             if t_lb <= 0:
                 t_lb = 0
                 found_lb = True
+                break
             else:
                 # get entry from z_nl...
                 id = np.where(t_nl < t_lb)[0][-1]
