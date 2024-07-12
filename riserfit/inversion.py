@@ -6,12 +6,21 @@ from typing import Union, Tuple, List
 # Data analysis
 import numpy as np
 import scipy as sp
+import matplotlib.pyplot as plt
 
 # internal imports
 from .diffusion import nonlin_diff_perron2011
-from .riser_maths import analytical_profile, compute_misfit
+from .riser_maths import (
+    analytical_profile, 
+    compute_misfit, 
+    _transform_mse
+)
 
-def compute_misfit_for_optimization(
+###################################################
+# Linear inversion stuff ##########################
+###################################################
+    
+def _compute_misfit_for_optimization(
     params: np.ndarray,
     d_emp: np.ndarray,
     z_emp: np.ndarray,
@@ -101,7 +110,6 @@ def _linear_kt_uncertainty_mse(
             The transformed MSE.
             
     """
-    # print(a)
     # weights
     prof_len = d[-1] - d[0]
     f_i = np.zeros(len(z))
@@ -122,108 +130,159 @@ def _linear_kt_uncertainty_mse(
 
     return mse_out
 
-def _nonlinear_t_uncertainty_mse(
-    t: float,
+
+def _linear_kt_uncertainty_mse(
+    kt: float,
     d: np.ndarray,
     z: np.ndarray,
-    k: float,
-    S_c: float,
-    n: float,
-    d_nl: np.ndarray,
-    warning_eps: float,
-    z_nl_matrix: np.ndarray,
-    t_nl_matrix: np.ndarray,
-    mse_cutoff: float,
-    float_multiplier: float = 1e6
-) -> float:
-
+    geom_params: dict,
+    sigma: float,
+    min_mse: float
+) -> Tuple[float, float]:
     """
-    Used to calculate the MSE manipulated in such a way
-    that min(MSE) = [lower_t, upper_t], i.e., the 
-    uncertainty bounds of t, assuming nonlinear diffusion.
-    This is achieved using the transformation
-    MSE = (MSE-mse_cutoff)**2.
+    Transformed MSE for linear uncertainty inversion.
     
     Parameters:
     -----------
-        t: float
-            Time for which misfit should be evaluated.
+        kt: float
+            Evaluation diffusion time.
         d: np.ndarray
-            Relative distances.
+            Measured distances.
         z: np.ndarray
-            Relative elevations.
-        k: float
-            Nonlinear diffusivity.
-        S_c: float
-            Critical slope.
-        n: float
-            Exponent of the nonlinear diffusion equation.
-        d_nl: np.ndarray
-            The distances used for nonlinear diffusion 
-            calculations (equally spaced).
-        warning_eps: float
-            Output warning if slopes are lower than this value.
-        z_nl_matrix: np.ndarray
-            2d numpy array of pre-computed nonlinear diffusion
-            profiles of the form.
-        t_nl_matrix: np.ndarray
-            Time steps of the previously computed profiles.
-        mse_cutoff: float
-            Cutoff for t uncertainty interval, as in Wei et al.
-            2015: MSE < MSE_min + sigma
-        float_multiplier: float
-            Prevents floating point errors in scipy optimize (?).
-    
+            Measured elevations.
+        geom_params: dict
+            a, b, theta of the analytical profile.
+            
     Returns:
     --------
         mse_out: float
-            The transformed MSE at time t.
+            The outout transformed MSE.
     """
-    
-    # prevent negative time evals by returning high mse:
-    #print(t<0)
-    if t < 0: return 999.
-    
-    # check if t is in t_nl_matrix:
-    id = np.where(t_nl_matrix==t)[0]
+    z_at_kt = analytical_profile(d, kt, **geom_params)
+    mse_out = _transform_mse(d, z, z_at_kt, sigma, min_mse)
+    return mse_out 
 
-    if len(id)>0:
-        z_best = z_nl_matrix[id[0],:]
-    else:
-        # get the timestep prior to t:
-        id = np.where(t_nl_matrix<t)[0][-1]
-
-        z_start = z_nl_matrix[id,:]
-        # run nonlinear diffusion for one time step
-        dx = d_nl[1]-d_nl[0]
-        dt = t-t_nl_matrix[id]
-        z_1step, _ = nonlin_diff_perron2011(
-            z_start, dx, dt, 1, k, S_c, n, warning_eps
-        )
-
-        z_best = z_1step[-1,:]
+def _lin_invert_uncertainty(
+    d: np.ndarray, 
+    z: np.ndarray, 
+    kt_best: float, 
+    sigma: float, 
+    min_mse: float, 
+    dt: float = 0.5, 
+    max_iteration: int = 10_000,
+    geom_params: dict = {},
+) -> Tuple[float, float]:
+    """
+    Find the lower and upper uncertainty bounds for the nonlinear diffusion
+    age via inversion.
     
-    # interpolate to match spacing of d
-    intfun = sp.interpolate.interp1d(d_nl, z_best, kind="cubic")
-    z_at_t = intfun(d)
-    
-    # calculate transformed misfit
+    Parameters:
+    -----------
+        d: np.ndarray
+            Distances of measured profile.
+        z: np.ndarray 
+            Elevations of the measured profile.
+        nonlin_d: np.ndarray
+            Distances for the nonlinear modelled profile.
+        kt_best: float 
+            Age of the best fit profile.
+        sigma: float,
+            Wei et al. (2015) cutoff criterion. 
+        min_mse: float
+            Misfit of the best fit profile.
+        dt: float = 0.5 
+            Time step size.
+        max_iteration: int = 10_000
+            Number of iterations when searching for the upper bound.
+            If `max_iteration` is exceeded, the maximum possible uncertainty
+            is at `t_best + dt*max_iteration`
+        geom_params: dict = {}
+            Dictionary of geometrical parameters for the initial modelled
+            profile. (kt, a, b, theta)
 
-    # weights
-    prof_len = d[-1] - d[0]
-    f_i = np.zeros(len(z))
-    f_i[1:] = (d[1:] - d[:-1]) / prof_len
-    f_i *= (len(f_i)/np.sum(f_i))
-    
-    # calculate mse (without root!)
-    mse = np.sum(f_i*((z-z_at_t)**2))/len(z)
-    
-    # shift down such that misfit is zero if mse = MSE_cutoff
-    # ensure that 0 is local minimum. 
-    mse_out = ((mse-mse_cutoff)**2) * float_multiplier + 1
+    Returns:
+    --------
+        lower_opt.x[0]: float
+            Lower bound for kt.
+        upper_opt.x[0]: float
+            Upper bound for kt.
+    """
 
-    return mse_out
+    # search for kt uncertainty bounds...
+    kt_lb = kt_best
+    kt_ub = kt_best
+    
+    found_ub = False
+    found_lb = False
+    
+    z_reference = analytical_profile(
+        d, **geom_params
+    )
+    mse_reference = _transform_mse(d, z, z_reference, sigma, min_mse)
+    n = 0
+    
+    # iterate through possible constraints until a higher MSE
+    # is found.
+    while (n < max_iteration) and not (found_ub and found_lb):
+  
+        # check lower bound...
+        if not found_lb:
+            
+            kt_lb = kt_best - n*dt
+            
+            if kt_lb <= 0:
+                kt_lb = 0
+                found_lb = True
+            else:
+                geom_params["kt"] = kt_lb
+                z_at_kt = analytical_profile(d, **geom_params)
+                mse_lb = _transform_mse(d, z, z_at_kt, sigma, min_mse)
+            
+            if (mse_lb > 2*mse_reference) or (kt_lb <= 0):
+                found_lb = True
 
+        # check upper bound 
+        if not found_ub:
+            kt_ub = kt_best + n*dt
+            geom_params["kt"] = kt_ub 
+            z_at_kt = analytical_profile(d, **geom_params)
+            mse_ub = _transform_mse(d, z, z_at_kt, sigma, min_mse)
+            
+            if (mse_ub > 2*mse_reference):
+                found_ub = True
+
+        n += 1
+    
+    inv_params = {
+        "a": geom_params["a"],
+        "b": geom_params["b"],
+        "theta": geom_params["theta"]
+    }
+    args = (
+        d, z, inv_params, sigma, min_mse
+    )
+    
+    lower_opt = sp.optimize.minimize(
+        fun=_linear_kt_uncertainty_mse,
+        x0=np.array([(kt_lb+kt_best)/2]),
+        args=args,
+        method="Powell",
+        bounds=((kt_lb, kt_best),)
+    )
+    
+    upper_opt = sp.optimize.minimize(
+        fun=_linear_kt_uncertainty_mse,
+        x0=np.array([(kt_best+kt_ub)/2]),
+        args=args,
+        method="Powell",
+        bounds=((kt_best, kt_ub),)
+    )
+
+    return (lower_opt.x[0], upper_opt.x[0])
+
+################################################
+##### Nonlinear inversion for uncertainty ######
+################################################
 
 def _nonlin_transform_mse_at_t(
     t: float, 
@@ -302,58 +361,21 @@ def _nonlin_transform_mse_at_t(
 
     return mse_out
 
-
-def _transform_mse(
-    d: np.ndarray, 
-    z1: np.ndarray, 
-    z2: np.ndarray, 
-    sigma: float,
-    min_mse: float
-) -> float:
-    """
-    Calculate the transformed MSE, i.e., 
-    MSEtrans = (RMSE^2-RMSE_min-sigma)^2.
-    This is used to find the uncertainty bounds.
-    
-    Parameters:
-    -----------
-        d: np.ndarray
-            Array of distances.
-        z1: np.ndarray
-            First array of elevations with `z1.shape = d.shape`.
-        z2: np.ndarray
-            Second array of elevations with `z2.shape = z1.shape`
-        sigma: float
-            Uncertainty cutoff criterion after Wei et al. (2015).
-        min_mse: float
-            MSE of the best fit profile.
-    
-    Results:
-    --------
-        trans_mse: float
-            Transformed MSE of the input elevation arrays.
-    """
-
-    D = d[-1]-d[0]
-    f_i = np.zeros(len(z1))
-    f_i[1:] = (d[1:] - d[:-1]) / D 
-    f_i *= (len(f_i)/np.sum(f_i))
-    
-    trans_mse = (np.sum(f_i*((z1-z2)**2))/len(z1)-min_mse-sigma)**2
-    
-    return trans_mse 
-
 def _nonlin_invert_uncertainty(
     d: np.ndarray, 
     z: np.ndarray, 
     nonlin_d: np.ndarray,
+    z_best: np.ndarray,
     t_best: float, 
     sigma: float, 
     min_mse: float, 
     S_c: float, 
     dt: float = 0.5, 
     max_iteration: int = 10_000,
-    geom_params: dict = {}
+    geom_params: dict = {},
+    k: float = 1,
+    n: int = 2,
+    warning_eps: float = np.nan
 ) -> Tuple[float, float]:
     """
     Find the lower and upper uncertainty bounds for the nonlinear diffusion
@@ -384,6 +406,14 @@ def _nonlin_invert_uncertainty(
         geom_params: dict = {}
             Dictionary of geometrical parameters for the initial modelled
             profile. (a, b, theta)
+        k: float = 1
+            The diffusivity constant.
+        n: int = 2
+            The exponent of the (S/S_c) term in the nonlinear transport
+            equation.
+        warning_eps: float = np.nan
+            Raise a warning if calculated slopes are less than this value.
+            This can be used to detect instability in the numerical solution.
     
     Returns:
     --------
@@ -396,76 +426,80 @@ def _nonlin_invert_uncertainty(
     z_init = analytical_profile(
         nonlin_d, **geom_params
     )
-    n = int(t_best / dt) + 1
+    n_t = int(t_best / dt) + 1
     
     z_nl, t_nl = nonlin_diff_perron2011(
         z_init=z_init,
         dx=nonlin_d[1]-nonlin_d[0],
         dt=dt,
-        n_t=n,
+        n_t=n_t,
         S_c=S_c,
-        n=2,
-        k=1
+        n=n,
+        k=k,
+        warning_eps=warning_eps
     )
-    
+
     # starting from the last step in t_nl,
     # continuously calculate the transformed mse
     # until MSE at new step is larger than the last one.
     # (i.e. it must be after the local minimum in the
     # transformed mse)
-    
-    intfun = sp.interpolate.interp1d(nonlin_d, z_nl[-1,:], kind="cubic")
-    z_last = intfun(d)
-    mse_reference = _transform_mse(d, z, z_last, sigma, min_mse)
-    iteration = 0
-    mse_out = -np.infty
 
-    while (iteration < max_iteration) and (mse_out < 2*mse_reference):
-        
-        # calculate another step with nonlinear diffusion and add to
-        # z_nl, t_nl...
-        z_one, _ = nonlin_diff_perron2011(
-            z_nl[-1,:], dx=nonlin_d[1]-nonlin_d[0], dt=dt, n_t=1, k=1, S_c=S_c,
-            n=2
-        )
-
-        z_nl = np.concatenate((z_nl, [z_one[-1,:]]), axis=0)
-        t_nl = np.concatenate((t_nl, [t_nl[-1]+dt]), axis=0)
-        
-        # calculate the new mse...
-        intfun = sp.interpolate.interp1d(nonlin_d, z_nl[-1,:], kind="cubic")
-        z_new = intfun(d)
-        mse_out = _transform_mse(d, z, z_new, sigma, min_mse)
+    # search for kt uncertainty bounds...
+    t_lb = t_best
+    t_ub = t_best
     
-    # also look into the lower direction: what is the first point below t_best
-    # at which the mse is higher than before
+    found_ub = False
+    found_lb = False
     
-    ids = np.where(t_nl<t_best)[0][::-1]
-    i = 0
-    t_lower_bound = 0. 
-
-    found_lower_bound = False
-    while not found_lower_bound:
-        
-        # if we have iterated over all ids, set lb to 0.
-        if len(ids) == i:
-            t_lower_bound = 0.
-            break
-        
-        intfun = sp.interpolate.interp1d(
-            nonlin_d, 
-            z_nl[ids[i],:], 
-            kind="cubic"
-        )
-        z_i = intfun(d)
-        mse_out = _transform_mse(d, z, z_i, sigma, min_mse)
-        
-        if mse_out > 2*mse_reference:
-            t_lower_bound = t_nl[ids[i]]
-            found_lower_bound = True
-
-        i += 1
+    z_reference = z_best
+    mse_reference = _transform_mse(d, z, z_reference, sigma, min_mse)
+    iteration = 1
     
+    # iterate through possible constraints until a higher MSE
+    # is found.
+    while (iteration <= max_iteration) and not (found_ub and found_lb):
+
+        if not found_lb:
+            
+            t_lb = t_best - iteration*dt
+            
+            if t_lb <= 0:
+                t_lb = 0
+                found_lb = True
+            else:
+                # get entry from z_nl...
+                id = np.where(t_nl < t_lb)[0][-1]
+                intfun = sp.interpolate.interp1d(nonlin_d, z_nl[id,:], kind="cubic")
+                z_at_t = intfun(d)
+                mse_lb = _transform_mse(d, z, z_at_t, sigma, min_mse)
+            
+            if (mse_lb > 10*mse_reference) or (t_lb <= 0):
+                found_lb = True
+
+        # check upper bound 
+        if not found_ub:
+            
+            z_onestep, _ = nonlin_diff_perron2011(
+                z_nl[-1,:], dx=nonlin_d[1]-nonlin_d[0],
+                dt=dt, n_t=1, S_c=S_c, n=n, k=k, warning_eps=warning_eps
+            )
+            # cat to z_nl and t_nl:
+
+            z_nl = np.concatenate((z_nl, np.array([z_onestep[-1,:]])), axis=0)
+            t_nl = np.concatenate((t_nl, [t_nl[-1]+dt]), axis=0)
+            
+            intfun = sp.interpolate.interp1d(nonlin_d, z_nl[-1,:], kind="cubic")
+            z_at_t = intfun(d)
+            mse_ub = _transform_mse(d, z, z_at_t, sigma, min_mse)
+            
+            t_ub = t_nl[-1]
+            
+            if (mse_ub > 10*mse_reference):
+                found_ub = True
+
+        iteration += 1
+
     # after the loop, z_nl will contain all profiles within the error range.
     # feed this information to the actual inversion algorithm.
     
@@ -481,10 +515,10 @@ def _nonlin_invert_uncertainty(
     
     lower_opt = sp.optimize.minimize(
         fun=_nonlin_transform_mse_at_t,
-        x0=np.array([(t_lower_bound+t_best)/2]),
+        x0=np.array([(t_lb+t_best)/2]),
         args=args,
         method="Powell",
-        bounds=((t_lower_bound, t_best),)
+        bounds=((t_lb, t_best),)
     )
     
     # second part
@@ -497,10 +531,10 @@ def _nonlin_invert_uncertainty(
     
     upper_opt = sp.optimize.minimize(
         fun=_nonlin_transform_mse_at_t,
-        x0=np.array([(t_best+t_nl[-1])/2]),
+        x0=np.array([(t_best+t_ub)/2]),
         args=args,
         method="Powell",
-        bounds=((t_best, t_nl[-1]),)
+        bounds=((t_best, t_ub),)
     )
 
-    return lower_opt.x[0], upper_opt.x[0]
+    return (lower_opt.x[0], upper_opt.x[0])

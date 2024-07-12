@@ -27,9 +27,14 @@ from matplotlib.backends.backend_pdf import PdfPages
 from .diffusion import nonlin_diff_perron2011
 from .dem import *
 from .riser_maths import *
-from .inversion import *
+# from .inversion import *
+from .inversion import (
+    _compute_misfit_for_optimization, 
+    _linear_kt_uncertainty_mse,
+    _nonlin_invert_uncertainty,
+    _lin_invert_uncertainty    
+)
 
-print(compute_misfit_for_optimization)
 #########################################################################
 ## Part 1: Dealing with files, file management, setting up Riser class ##
 #########################################################################
@@ -1185,7 +1190,7 @@ class Riser:
                 print(f"Computing best fit for profile {self.name[i]}")
 
             fit_profile = minimize(
-                fun=compute_misfit_for_optimization,
+                fun=_compute_misfit_for_optimization,
                 x0=params,
                 args=(d, z, scales, warning_eps),
                 method="Powell",
@@ -2085,11 +2090,11 @@ class Riser:
 
     def calculate_kt_uncertainty(
         self,
-        max_upper_kt: float = 10000,
+        dt: float = 5,
+        max_iteration: int = 1000,
         summarypdf: bool = False,
         ascending: bool = False,
-        verbose: bool = True,
-        float_multiplier: float = 1e6
+        verbose: bool = True
     ) -> Self:
 
         """
@@ -2098,10 +2103,11 @@ class Riser:
 
         Parameters:
         -----------
-            tolerance: float
-                Uncertainty bounds are determined numerically. Lowering the
-                tolerance will increase the accuracy, but also increase
-                computation time.
+            dt: float
+                Step size when searching for inversion bounds on kt.
+            max_iteration: int
+                Maximum number of iterations when searching for 
+                the inversion bounds in kt.
             summarypdf: bool
                 Option to plot all diffusion ages against profile name,
                 including uncertainty.
@@ -2109,9 +2115,6 @@ class Riser:
                 Option to plot ages in ascending order.
             verbose: bool
                 Option to print results to console output.
-            float_multiplier: float
-                Prevents floating point errors in scipy optimize (?).
-
 
         Returns:
         --------
@@ -2121,74 +2124,38 @@ class Riser:
  
         l_kt,u_kt = [], []
 
-        # briefly check if any best_kt is larger than max_upper_kt
-        delta = np.array(self.best_kt)-max_upper_kt
-        if np.any(delta>0):
-            raise Exception("max_upper_kt smaller than np.max(self.best_kt)")
-        
-        for i, op_kt in enumerate(self.best_kt):
-
-            # residuals:
-            z_best = analytical_profile(
-                self.d[i], self.best_kt[i], self.best_a[i],
-                self.best_b[i], self.best_theta[i]
+        for i, _ in enumerate(self.name):
+            
+            geom_params = {
+                "kt": self.best_kt[i],
+                "a": self.best_a[i],
+                "b": self.best_b[i],
+                "theta": self.best_theta[i]
+            }
+            sigma = calculate_wei_2015_sigma(
+                self.z[i]-analytical_profile(
+                    self.d[i], self.best_kt[i], self.best_a[i],
+                    self.best_b[i], self.best_theta[i]
+                )
             )
-            residuals = self.z[i]-z_best
-            # calculate the misfit bound:
-            sigma = calculate_wei_2015_sigma(residuals)
-            misfit_cutoff = self.best_misfit[i]**2 + sigma
-            
-            # set up the scipy minimizer for the lower and upper
-            # bounds, respectively
-
-            params = (
-                self.best_a[i], self.best_b[i], 
-                self.best_theta[i], self.d[i],
-                self.z[i], misfit_cutoff, float_multiplier
+             
+            lb, ub = _lin_invert_uncertainty(
+                d=self.d[i],
+                z=self.z[i],
+                kt_best=self.best_kt[i],
+                sigma=sigma,
+                min_mse=self.best_misfit[i]**2,
+                dt=dt,
+                max_iteration=max_iteration,
+                geom_params=geom_params
             )
-            
-            # lower bound
-            try:
-                lb_opt = minimize(
-                    fun=_linear_kt_uncertainty_mse,
-                    x0=np.array([0.9*op_kt]),
-                    args=params,
-                    method="Powell",
-                    bounds=((0, op_kt),)
-                )
-                lb = lb_opt.x[0]
-            except ValueError:
-                warnings.warn(
-                    ("Exception raised in linear lower bound calculation: "
-                     +f"instance: {self.identifier}, profile: {self.name[i]}."
-                     +" Setting lower bound to 0.")
-                )
-                print(traceback.format_exc())
-                lb = 0
-            
-            # upper bound
-            try:
-                ub_opt = minimize(
-                    fun=_linear_kt_uncertainty_mse,
-                    x0=np.array([1.1*op_kt]),
-                    args=params,
-                    method="Powell",
-                    bounds=((op_kt, max_upper_kt),)
-                )
-                ub = ub_opt.x[0]
-            except ValueError:
-                warnings.warn(
-                    ("Exception raised in linear upper bound calculation:"
-                     +f"instance: {self.identifier}, profile: {self.name[i]}."
-                     +"Setting lower bound to 0.")
-                )
-                print(traceback.format_exc())
-                ub = max_upper_kt
             
             if verbose == True:
                 print(f"kt bounds for {self.name[i]}:")
                 print(f"\t Lower kt = {lb:.2f}")
+                print(f"\t Best kt = {self.best_kt[i]:.2f}")
                 print(f"\t Upper kt = {ub:.2f}")
+                
             l_kt.append(lb)
             u_kt.append(ub)
 
@@ -2233,11 +2200,9 @@ class Riser:
         n: float = 2,
         dt: float = 1., 
         warning_eps: float = -10e-15,
-        max_upper_t: float = None,
+        max_iteration: int = 10_000,
         summarypdf: bool = False,
-        ascending: bool = False,
         verbose: bool = True,
-        float_multiplier: float = 1e6
     ) -> Self:
         """
         Calculate uncertainty bounds for
@@ -2257,122 +2222,54 @@ class Riser:
             warning_eps: float
                 Raise warning if slopes of the modelled profiles
                 are smaller than warning_eps.
-            max_upper_t: float
-                If None, upper bound is set to ``self.nonlin_best_t[i]+5000``.
-                Otherwise, upper bound is equal to ``max_upper_t``.
+            max_iteration: int
+                How far ahead t are computed when searching for the upper
+                uncertainty bound. The upper limit is determined by 
+                dt*max_iteration
             summarypdf: bool
                 Option to plot all diffusion ages against profile name,
                 including uncertainty.
-            ascending: bool
-                Option to plot ages in ascending order.
             verbose: bool
                 Option to print results to console output.
-            float_multiplier: float
-                Prevents floating point errors in scipy optimize (?).
 
         Returns:
         --------
             self: Self
                 The Riser instance.
         """
-        # calculate upper_t_bounds
-        if max_upper_t != None:
-            upper_t_bound = np.ones(len(self.nonlin_best_t))*max_upper_t 
-        else:
-            upper_t_bound = np.array(self.nonlin_best_t)+5000
-
-        l_t = []  # saving upper and lower t boundaries
+        
+        l_t = []
         u_t = []
         
-        for i, opt_t in enumerate(self.nonlin_best_t):
+        for i, _ in enumerate(self.name):
             
-            # MSE cutoff criterion
-            residuals = self.z[i] - self.nonlin_best_z[i]
-            sigma = calculate_wei_2015_sigma(residuals)
-            misfit_cutoff = self.nonlin_best_mf[i]**2 + sigma
-
-            # spacing
-            dx = self.nonlin_d[i][1]-self.nonlin_d[i][0]
-            
-            # get existing nonlin_z_matrix and nonlin_t_times
-            # if empty, compute again
-            if len(self.nonlin_z_matrix) == 0:
-                
-                z_init = analytical_profile(
-                    self.nonlin_d[i], 0, self.best_a[i],
-                    self.best_b[i], self.best_theta[i]
-                )
-                
-                n_t = int(upper_t_bound[i]/dt + 1)
-
-                z_nl_uncert, t_nl_uncert = nonlin_diff_perron2011(
-                    z_init, dx, dt, n_t, k, S_c, n, warning_eps
-                )
-                
-            else:
-                # use the already existing nonlin_z_matrix
-                # to reduce computation time...
-                z_init = self.nonlin_z_matrix[i][-1,:] # z at opt_t
-                t_max = self.nonlin_t_times[i][-1]
-                n_t = int((upper_t_bound[i]-t_max)/dt+1)
-                nl_z_matrix2, nl_t_matrix2 = nonlin_diff_perron2011(
-                    z_init, dx, dt, n_t, k, S_c, n, warning_eps
-                )
-                nl_t_matrix2 += opt_t # first entry is zero by default...
-                # concatenate with existing matrix:
-                # (last time step is there twice, remove once)
-                z_nl_uncert = np.concatenate(
-                    (self.nonlin_z_matrix[i][:-1,:], nl_z_matrix2),
-                    axis=0
-                )
-                t_nl_uncert = np.concatenate(
-                    (self.nonlin_t_times[i][:-1], nl_t_matrix2)
-                )
-    
-            args = (
-                self.d[i], self.z[i], k, S_c, n, self.nonlin_d[i],
-                warning_eps, z_nl_uncert, t_nl_uncert, misfit_cutoff,
-                float_multiplier
+            # calculate wei et al sigma
+            sigma = calculate_wei_2015_sigma(
+                self.z[i] - self.nonlin_best_z[i]
             )
+            geom_params = {
+                "kt": 0,
+                "a": self.best_a[i],
+                "b": self.best_b[i],
+                "theta": self.best_theta[i]
+            }
             
-            # optimize for lower_t:
-            try:
-                lower_t_opt = minimize(
-                    fun=_nonlinear_t_uncertainty_mse,
-                    x0=np.array([opt_t*0.9]),
-                    args=args,
-                    method="Powell",
-                    bounds=((0, opt_t),)
-                )
-                lb = lower_t_opt.x[0]
-            except ValueError:
-                '''TODO: What causes ValueError???'''
-                warnings.warn(
-                    ("Exception raised in nonlinear lower bound calculation:"
-                     +f"instance: {self.identifier}, profile: {self.name[i]}."
-                     +"Setting lower bound to 0.")
-                )
-                print(traceback.format_exc())
-                lb=0
-
-            # optimize for upper_t:
-            try:
-                upper_t_opt = minimize(
-                    fun=_nonlinear_t_uncertainty_mse,
-                    x0=np.array([opt_t*1.1]),
-                    args=args,
-                    method="Powell",
-                    bounds=((opt_t, upper_t_bound[i]),)
-                )
-                ub = upper_t_opt.x[0]
-            except ValueError:
-                warnings.warn(
-                    ("Exception raised in nonlinear upper bound calculation:"
-                     +f"instance: {self.identifier}, profile: {self.name[i]}."
-                     +f"Setting upper bound to {upper_t_bound[i]:.2f}.")
-                )
-                print(traceback.format_exc())
-                ub=upper_t_bound[i]
+            lb, ub = _nonlin_invert_uncertainty(
+                d=self.d[i],
+                z=self.z[i],
+                nonlin_d=self.nonlin_d[i],
+                z_best=self.nonlin_best_z[i],
+                t_best=self.nonlin_best_t[i],
+                dt=dt,
+                sigma=sigma,
+                min_mse=self.nonlin_best_mf[i]**2,
+                S_c=S_c,
+                geom_params=geom_params,
+                max_iteration=max_iteration,
+                k=k,
+                n=n,
+                warning_eps=warning_eps
+            )
 
         
             l_t.append(lb)
@@ -2381,7 +2278,7 @@ class Riser:
             if verbose == True:
                 print(f"Calculating t bounds for {self.name[i]}:")
                 print(f"\t Lower t = {lb:.2f} kyr")
-                print(f"\t Best t = {opt_t:.2f} kyr")
+                print(f"\t Best t = {self.nonlin_best_t[i]:.2f} kyr")
                 print(f"\t Upper t = {ub:.2f} kyr")
 
         self.nonlin_lower_t = l_t
@@ -2392,15 +2289,9 @@ class Riser:
             y_upper = np.array(self.nonlin_upper_t)-np.array(self.nonlin_best_t)
             y_lower = np.array(self.nonlin_best_t)-np.array(self.nonlin_lower_t)
 
-            if ascending is True:
-                order_ID = np.argsort(self.nonlin_best_t)
-                y_uncert = np.array([y_lower[order_ID], y_upper[order_ID]])
-                kt_age = np.array(self.nonlin_best_t)[order_ID]
-                prof_name = np.array(self.name)[order_ID]
-            else:
-                y_uncert = np.array([y_lower, y_upper])
-                kt_age = np.array(self.nonlin_best_t)
-                prof_name = np.array(self.name)
+            y_uncert = np.array([y_lower, y_upper])
+            kt_age = np.array(self.nonlin_best_t)
+            prof_name = np.array(self.name)
 
             plot_at = [i for i in range(0,len(self.nonlin_best_t))]
             fg, ax = plt.subplots()
