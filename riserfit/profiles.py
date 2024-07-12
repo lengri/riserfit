@@ -516,6 +516,48 @@ def compute_misfit_for_optimization(
 
     return misfit
 
+
+def _transform_mse(
+    d: np.ndarray, 
+    z1: np.ndarray, 
+    z2: np.ndarray, 
+    sigma: float,
+    min_mse: float
+):
+    """
+    Calculate the transformed MSE, i.e., 
+    MSEtrans = (RMSE^2-RMSE_min-sigma)^2.
+    This is used to find the uncertainty bounds.
+    
+    Parameters:
+    -----------
+        d: np.ndarray
+            Array of distances.
+        z1: np.ndarray
+            First array of elevations with `z1.shape = d.shape`.
+        z2: np.ndarray
+            Second array of elevations with `z2.shape = z1.shape`
+        sigma: float
+            Uncertainty cutoff criterion after Wei et al. (2015).
+        min_mse: float
+            MSE of the best fit profile.
+    
+    Results:
+    --------
+        trans_mse: float
+            Transformed MSE of the input elevation arrays.
+    """
+
+    D = d[-1]-d[0]
+    f_i = np.zeros(len(z1))
+    f_i[1:] = (d[1:] - d[:-1]) / D 
+    f_i *= (len(f_i)/np.sum(f_i))
+    
+    trans_mse = (np.sum(f_i*((z1-z2)**2))/len(z1)-min_mse-sigma)**2
+    
+    return trans_mse 
+
+
 def _nonlinear_t_uncertainty_mse(
     t: float,
     d: np.ndarray,

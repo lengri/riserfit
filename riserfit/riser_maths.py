@@ -1139,6 +1139,7 @@ class DistributionFromInterpolator():
         
         # construct inverse CDF
         # this fill value only works for well-behaved x!!
+        # this is useful to quickly calculate quantiles
         self.inverse_cdf = sp.interpolate.interp1d(
             np.cumsum(self.density*dx), self.x,
             bounds_error=False, fill_value=(0, 1)

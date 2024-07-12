@@ -18,9 +18,8 @@ import itertools as it
 
 class Constructor_Extractor:
 	"""
- 	Internal class for handeling profile building and extraction from a
-	DEM.
-	This function should never be called by a package user.
+ 	Internal class for handeling profile building and 
+  	extracting elevation values from a DEM. 
   	"""
 	def __init__(
 		self,
@@ -71,7 +70,12 @@ class Constructor_Extractor:
 		self
 	) -> Self:
 		"""
-		Build profiles based on the provided data.
+		Build the center lines XY-coordinates of elevation profile.
+		Center points and line orientations are supplied when initializing
+		the ``Constructor_Extractor`` instance and stored in
+		``self.centerpoints`` and ``self.directions``. Similarly,
+		spacing and number of points are supplied during instance
+		creation.
   
 		Parameters:
 		-----------
@@ -80,7 +84,9 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The ``Constructor_Extractor`` instance.
+				The ``Constructor_Extractor`` instance. XY coordinates
+				of the created lines are stored in 
+				``self.centerlines``.
   		"""
 		p_lines = []
 		# center lines for both start_end_point true or false,
@@ -107,7 +113,10 @@ class Constructor_Extractor:
 	) -> Self:
 
 		"""
-  		Build swath profile point tuples based on the input data.
+  		Build swath lines around the center profile lines created by
+		``Constructor_Extractor.build_center_profiles()``. This method
+		raises an error if ``build_center_profiles()`` has not been 
+		called before calling this method.
 
 		Parameters:
 		-----------
@@ -116,7 +125,8 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The ``Constructor_Extractor`` instance.
+				The ``Constructor_Extractor`` instance with swath
+    			coordinates stored in ``self.swath_list``.
     	"""
 
 		# assuming that swath_number > 0...
@@ -157,9 +167,10 @@ class Constructor_Extractor:
 		self
 	) -> Self:
 		"""
-		Builds and unravelles a nested list containing profile lines, swaths,
-		and points. The decomposed list is used for efficient 
-		elevation extraction from the DEM.
+		Flattens the nested lists stored in ``self.swath_list`` into 
+		a single flat list while keeping track of original point
+		associations. This method is used to enable more efficient sampling
+		of elevation values from a DEM.
   
 		Parameters:
 		-----------
@@ -168,7 +179,11 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The ``Constructor_Extractor`` instance.
+				The ``Constructor_Extractor`` instance. The decomposed
+				points are stored in ``self.decomposed_single_line_points``, or
+				``self.decomposed_swath_line_points``, if ``self.swath_number>0``.
+				Point associations to reconstruct the nested list 
+    			are stored in ``self.ordered_line_len_counter``
   		"""
 		if self.swath_number == 0:
 			# simple decomposition in one step...
@@ -291,7 +306,7 @@ def construct_z_profiles_from_centerpoints(
 	dem_min: float = 0.,
 	dem_max: float = 800.,
 	verbose: bool = True,
-	**pd_kwargs
+	read_csv_kwargs: dict = {}
 ) -> Tuple[list, list]:
 	"""
 	Load a .csv containing a list of profile center points, construct
@@ -343,6 +358,8 @@ def construct_z_profiles_from_centerpoints(
 			exist, the directory is created.
 		verbose: bool
 			If True, print some status updates while processing.
+		read_csv_kwargs: dict
+			Additional parameters passed to pandas.read_csv().
 
 	Returns:
 	--------
@@ -354,7 +371,7 @@ def construct_z_profiles_from_centerpoints(
 			``riserfit.initialize_riser_class()``.
 	"""
 
-	df = pd.read_csv(os.getcwd()+"\\"+pointfilepath, **pd_kwargs)
+	df = pd.read_csv(os.getcwd()+"\\"+pointfilepath, **read_csv_kwargs)
 	#print(df)
 	# create directory for storing results
 	path = os.getcwd()+"\\"+savedir+"\\"
@@ -601,6 +618,7 @@ def construct_z_profiles_from_centerpoints(
 		for i, profile in enumerate(profiles_df):
 			plt.plot(profile["x"], profile["y"], c="black")
 		plt.show()
+  
 	return (profiles_df, names)
 
 
