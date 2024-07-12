@@ -122,7 +122,6 @@ def _linear_kt_uncertainty_mse(
 
     return mse_out
 
-
 def _nonlinear_t_uncertainty_mse(
     t: float,
     d: np.ndarray,
