@@ -233,14 +233,13 @@ def _lin_invert_uncertainty(
             if kt_lb <= 0:
                 kt_lb = 0
                 found_lb = True
-                break
             else:
                 geom_params["kt"] = kt_lb
                 z_at_kt = analytical_profile(d, **geom_params)
                 mse_lb = _transform_mse(d, z, z_at_kt, sigma, min_mse)
             
-            if (mse_lb > 2*mse_reference) or (kt_lb <= 0):
-                found_lb = True
+                if (mse_lb > 2*mse_reference):
+                    found_lb = True
 
         # check upper bound 
         if not found_ub:
@@ -468,7 +467,6 @@ def _nonlin_invert_uncertainty(
             if t_lb <= 0:
                 t_lb = 0
                 found_lb = True
-                break
             else:
                 # get entry from z_nl...
                 id = np.where(t_nl < t_lb)[0][-1]
@@ -476,8 +474,8 @@ def _nonlin_invert_uncertainty(
                 z_at_t = intfun(d)
                 mse_lb = _transform_mse(d, z, z_at_t, sigma, min_mse)
             
-            if (mse_lb > 10*mse_reference) or (t_lb <= 0):
-                found_lb = True
+                if (mse_lb > 10*mse_reference):
+                    found_lb = True
 
         # check upper bound 
         if not found_ub:
