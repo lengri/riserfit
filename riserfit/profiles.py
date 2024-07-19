@@ -27,10 +27,8 @@ from matplotlib.backends.backend_pdf import PdfPages
 from .diffusion import nonlin_diff_perron2011
 from .dem import *
 from .riser_maths import *
-# from .inversion import *
 from .inversion import (
     _compute_misfit_for_optimization, 
-    _linear_kt_uncertainty_mse,
     _nonlin_invert_uncertainty,
     _lin_invert_uncertainty    
 )
@@ -3077,7 +3075,32 @@ class Riser:
                         warnings.warn(f"Could not find attribute {key}, ignoring")
  
         return self
+    
+    def save_instance(
+        self,
+        savedir: str = ""
+    ) -> Self:
         
+        """
+        Save a Riser instance using Python's pickle module.
+        
+        Parameters:
+        -----------
+            Path to subdirectory to which the file is saved.
+        
+        Returns:
+        --------
+            self: Self
+                The Riser instance.
+        """
+        
+        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_Riser_instance.pickle"
+        with open(name, "wb") as f:
+            pickle.dump(self, f, -1)
+        
+        return self
+    
+    
     def save_Riser_instance_structure(
         self,
         savedir: str = ""
@@ -3248,6 +3271,30 @@ class Riser:
 ##############################################
 ## Part 3: loading a saved riser instance ##
 ##############################################
+
+def load_instance(
+    filename: str
+) -> Union[Riser, RiserPlayground, StatsMC]:
+    """
+    Generic function to load a pickled class instance from a file. This 
+    applies to saved `Riser`, `RiserPlayground`, and `StatsMC` instances.
+    
+    Parameters:
+    -----------
+        filename: str
+            The name of the file.
+    
+    Returns:
+    --------
+        instance: Riser | RiserPlayground | StatsMC
+            An instance of any of the three classes.
+    """
+
+    name = os.getcwd()+f"\\{filename}"
+    instance = pickle.load(open(name, "rb", -1))
+    
+    return instance
+
 
 def load_Riser_instance_structure(
     filepath: str,

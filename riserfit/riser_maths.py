@@ -6,8 +6,7 @@ from typing import Callable
 from typing_extensions import Self # pre python 3.11
 
 #system stuff
-import os, warnings, sys
-import warnings
+import os, warnings, sys, pickle
 
 # data analysis, managing and calculations
 import numpy as np
@@ -769,6 +768,28 @@ def kde_gaussian(
     return kde
 
 
+def load_StatsMC_instance(
+    filename: str
+) -> StatsMC:
+    """
+    Load a StatsMC instance from a pickled file.
+    
+    Parameters:
+    -----------
+        filename: str
+            Name of the file in the current working directory.
+        
+    Returns:
+    --------
+        smc: StatsMC
+            StatsMC instance loaded from the file.
+    """
+    name = os.getcwd()+f"\\{filename}"
+    smc = pickle.load(open(name, "rb", -1))
+    
+    return smc
+
+
 class StatsMC:
     """
     This class provides tools for Monte Carlo simulations 
@@ -821,7 +842,32 @@ class StatsMC:
         self.MC_t_kde = None
         self.k_kde = None
         self.MC_t_sample = None
+    
+    def save_instance(
+        self,
+        savedir: str = ""
+    ) -> Self:
+        """
+        Save a StatsMC instance to a .pickle file. Instance can be re-loaded
+        using load_StatsMC_instance().
         
+        Parameters:
+        -----------
+            savedir: str
+                Path to the sub directory.
+                
+        Returns:
+        --------
+            self: Self
+                The StatsMC instance.
+        """
+        
+        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_StatsMC_instance.pickle"
+        with open(name, "wb") as f:
+            pickle.dump(self, f, -1)
+        
+        return self
+    
     def construct_kt_kde(
         self,
         kde: callable = triang_kde,
