@@ -300,7 +300,7 @@ class RiserPlayground(Riser):
                 element defines a unique distance array used for creating
                 riser profiles.
             use_linear: bool
-                If `True`, nterpret kt as linear diffusion age. If `False`,
+                If `True`, interpret kt as linear diffusion age. If `False`,
                 assume nonlinear diffusion age. Computing nonlinear profiles
                 may take a significant amount of time.
             max_dt: float
@@ -458,7 +458,7 @@ class RiserPlayground(Riser):
                 # calculate last time step
                 if dt_last_step > 0:
                     z_nl, _ = nonlin_diff_perron2011(
-                        z_init=z_init, 
+                        z_init=z_nl[-1,:], 
                         dx=dx, 
                         dt=dt_last_step, 
                         n_t=1, 
