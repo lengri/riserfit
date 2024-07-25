@@ -3097,7 +3097,7 @@ class Riser:
         
         name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_Riser_instance.gz"
         with open(name, "wb") as f:
-            pickle.dump(self, f, "gz")
+            pickle.dump(self, f, "gzip")
         
         return self
     
