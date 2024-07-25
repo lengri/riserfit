@@ -6,6 +6,7 @@ from typing_extensions import Self # pre python 3.11
 
 #system stuff
 import os, warnings, sys, traceback
+import compress_pickle as pickle
 
 # data analysis, managing and calculations
 import numpy as np
@@ -3094,9 +3095,9 @@ class Riser:
                 The Riser instance.
         """
         
-        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_Riser_instance.pickle"
+        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_Riser_instance.gz"
         with open(name, "wb") as f:
-            pickle.dump(self, f, -1)
+            pickle.dump(self, f, "gz")
         
         return self
     

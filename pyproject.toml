@@ -22,7 +22,8 @@ dependencies = [
   'scikit-spatial',
   'rasterio',
   'scikit-learn',
-  'typing_extensions'
+  'typing_extensions',
+  'compress_pickle'
 ]
 
 [project.optional-dependencies]

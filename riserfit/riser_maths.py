@@ -6,7 +6,8 @@ from typing import Callable
 from typing_extensions import Self # pre python 3.11
 
 #system stuff
-import os, warnings, sys, pickle
+import os, warnings, sys
+import compress_pickle as pickle
 
 # data analysis, managing and calculations
 import numpy as np
@@ -862,9 +863,9 @@ class StatsMC:
                 The StatsMC instance.
         """
         
-        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_StatsMC_instance.pickle"
+        name = f"{os.getcwd()}\\{savedir}\\{self.identifier}_StatsMC_instance.gz"
         with open(name, "wb") as f:
-            pickle.dump(self, f, -1)
+            pickle.dump(self, f, "gzip")
         
         return self
     
@@ -1177,6 +1178,7 @@ def construct_averaged_kde(
     
     return DistributionFromInterpolator(x, pdf)
 
+
 class DistributionFromInterpolator():
     """
     Class that contains basic statistical tools for the use of probability
@@ -1203,6 +1205,7 @@ class DistributionFromInterpolator():
         --------
             None
         """
+        
         self.x = x
         self.density=pdf
         self.density /= np.trapz(y=self.density, x=self.x)
@@ -1229,7 +1232,7 @@ class DistributionFromInterpolator():
         # this is useful to quickly calculate quantiles
         self.inverse_cdf = sp.interpolate.interp1d(
             np.cumsum(self.density*dx), self.x,
-            bounds_error=False, fill_value=(0, 1)
+            bounds_error=False, fill_value=(self.x[0], self.x[-1])
         )
     
     def sample(
@@ -1309,7 +1312,7 @@ def distribution_from_sample(
     # determine bounds:
     if bounds == (0, 0):
         bounds = (sample_sorted[0], sample_sorted[-1])
-
+    
     y_cdf = np.linspace(1/n, 1, n)
     x_cdf = np.arange(bounds[0], bounds[1]+resolution, resolution)  
     
@@ -1317,14 +1320,14 @@ def distribution_from_sample(
         sample_sorted, y_cdf, bounds_error=False,
         fill_value=(0, 1)
     )
-    
+
     cdf_even = intfun(x_cdf)
     
     # calculate derivative of CDF (PDF)
     pdf = np.zeros(cdf_even.shape)
     pdf[1:-1] = (cdf_even[2:]-cdf_even[:-2]) / (x_cdf[2:]-x_cdf[:-2])
     pdf[0] = (cdf_even[0]-cdf_even[1]) / (x_cdf[0]-x_cdf[1])
-    pdf[-1] = (cdf_even[-1]-cdf_even[-2]) / (x_cdf[-1]-x_cdf[-2])
+    pdf[-1] = (cdf_even[-1]-cdf_even[-2]) / (x_cdf[-1]-x_cdf[-2])   
     
     distribution = DistributionFromInterpolator(
         x_cdf, pdf
