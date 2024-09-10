@@ -453,7 +453,7 @@ def nonlin_diff_perron2011(
     k: Union[float, np.ndarray],
     S_c: float,
     n: float = 2.,
-    warning_eps: float = -10e-15,
+    warning_eps: float = None,
     uplift_rate: Union[np.ndarray, float] = 0.,
     rho_ratio: float = 1.
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -485,7 +485,8 @@ def nonlin_diff_perron2011(
         n: int
             Exponent in the nonlinear transport term.
         warning_eps: float
-            Print a warning message if slopes get more negative than this value.
+            Print a warning message if slopes are higher than this value. Defaults to
+            the value of S_c.
         uplift_rate: np.ndarray | float
             Imposed uplift rate in m/kyr. Zero by default. If supplied as array,
             len(uplift rate) == n_t must be True. No uplift is applied
@@ -521,6 +522,8 @@ def nonlin_diff_perron2011(
             raise Exception("len(k) != n_t")
         k_array = k
     
+    if warning_eps == None: warning_eps = S_c
+    
     prof_matrix = np.zeros((n_t+1, len(z_init)))
     prof_matrix[0,:] = z_init
 
@@ -553,9 +556,9 @@ def nonlin_diff_perron2011(
 
         # if the original z_x has negative slopes, then those slopes are
         # permitted. (e.g. for b<0) Set warning_eps to np.nan
-        if any(z_x<warning_eps) and WARNING_FLAG: 
+        if any(np.abs(z_x)>warning_eps) and WARNING_FLAG: 
             WARNING_FLAG = False
-            warnings.warn(f"z_x={z_x.min():.4f} < 0: Can only be caused by instability.")
+            warnings.warn(f"z_x=abs({z_x.min():.4f}) > {warning_eps:.4f}: Can only be caused by instability.")
 
         # a = k, for comparability with Perron 2011.
         b = 1 / (S_c**n)  # introduced by Perron 2011.
