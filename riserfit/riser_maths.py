@@ -24,7 +24,7 @@ from scipy.special import erf
 def _is_numeric(value):
     if type(value) == np.ndarray: return False 
     try:
-        a = float(value)
+        float(value)
         return True
     except:
         return False
@@ -896,6 +896,10 @@ class StatsMC:
                 A PDF instance of the riserfit.CustomDistribution class.
         """
         
+        # perform a simple check to see if kts are outside min max range
+        if all(self.kt>max_val):
+            raise Exception('All kt > max_val results in undefined PDF')
+        
         # store min and max
         self.kt_min_val = min_val
         self.kt_max_val = max_val
@@ -905,6 +909,7 @@ class StatsMC:
         self.kt_kde = DistributionFromInterpolator(
             x=ktx, pdf=pdf_kt
         )
+        
         
         return self
     
@@ -998,7 +1003,6 @@ class StatsMC:
                 A PDF instance of the 
                 riserfit.DistributionFromInterpolator class.
         """
-        
         # save min and max
         self.k_min_val = min_val 
         self.k_max_val = max_val 
@@ -1009,6 +1013,7 @@ class StatsMC:
         # create two weighted samples
         pdf_kt = self.kt_kde.pdf(ktx)
         pdf_t = self.initial_t_kde.pdf(tx)
+
         kt_sample = np.random.choice(
             ktx, size=n, replace=True, p=pdf_kt/np.sum(pdf_kt)
         )
@@ -1018,16 +1023,15 @@ class StatsMC:
         )
         
         # calculate CDF and differentiate to PDF
-        k_sample = np.sort(kt_sample / t_sample)
+        self.k_sample = np.sort(kt_sample / t_sample)
         
         # pass sample to distribution creator
         self.k_kde = distribution_from_sample(
-            sample=k_sample,
+            sample=self.k_sample,
             resolution=k_resolution,
             bounds=(min_val, max_val)
         )
-        self.k_sample = k_sample
-        
+
         return self
     
     ##### EXPERIMENTAL
