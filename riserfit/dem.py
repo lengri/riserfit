@@ -76,10 +76,6 @@ class Constructor_Extractor:
 		``self.centerpoints`` and ``self.directions``. Similarly,
 		spacing and number of points are supplied during instance
 		creation.
-  
-		Parameters:
-		-----------
-			None
 
 		Returns:
 		--------
@@ -117,10 +113,6 @@ class Constructor_Extractor:
 		``Constructor_Extractor.build_center_profiles()``. This method
 		raises an error if ``build_center_profiles()`` has not been 
 		called before calling this method.
-
-		Parameters:
-		-----------
-			None
 
 		Returns:
 		--------
@@ -171,10 +163,6 @@ class Constructor_Extractor:
 		a single flat list while keeping track of original point
 		associations. This method is used to enable more efficient sampling
 		of elevation values from a DEM.
-  
-		Parameters:
-		-----------
-			None
 
 		Returns:
 		--------

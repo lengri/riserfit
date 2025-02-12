@@ -10,7 +10,6 @@ import numpy as np
 import rasterio as rio
 from scipy.interpolate import interpn
 
-
 rasterpath="\\Data\\DEM_Patagonia\\NOTFORRELEASE_EPSG32719.tif"
 pointpath="\\Data\\DEM_Patagonia\\profile_points.csv"
 

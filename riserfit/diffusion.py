@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 # small numeric checker
 def _is_numeric(value):
     try:
-        a = float(value)
+        float(value)
         return True
     except:
         return False
@@ -522,7 +522,7 @@ def nonlin_diff_perron2011(
             raise Exception("len(k) != n_t")
         k_array = k
     
-    if warning_eps == None: warning_eps = S_c
+    if warning_eps is None: warning_eps = S_c
     
     prof_matrix = np.zeros((n_t+1, len(z_init)))
     prof_matrix[0,:] = z_init
