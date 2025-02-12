@@ -95,11 +95,12 @@
 <span class="c1"># class for handling list/array reshaping, depending on swath_number</span>
 
 <div class="viewcode-block" id="Constructor_Extractor"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor">[docs]</a><span class="k">class</span> <span class="nc">Constructor_Extractor</span><span class="p">:</span>
+<span class="w">    </span>
 <span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd"> 	Internal class for handeling profile building and extraction from a</span>
-<span class="sd">	DEM.</span>
-<span class="sd">	This function should never be called by a package user.</span>
-<span class="sd">  	&quot;&quot;&quot;</span>
+<span class="sd">		Internal class for handeling profile building and </span>
+<span class="sd">		extracting elevation values from a DEM. </span>
+<span class="sd">	&quot;&quot;&quot;</span>
+   
 	<span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
 		<span class="bp">self</span><span class="p">,</span>
 		<span class="n">centerpoints</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> 
@@ -110,6 +111,7 @@
 		<span class="n">swath_number</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 		<span class="n">swath_spacing</span><span class="p">:</span> <span class="nb">float</span>
 	<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">     </span>
 <span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">		Initialize a ``Constructor_Extractor`` instance.</span>
 <span class="sd">  </span>
@@ -136,7 +138,9 @@
 <span class="sd">		Returns:</span>
 <span class="sd">		--------</span>
 <span class="sd">			None</span>
+<span class="sd">   </span>
 <span class="sd">		&quot;&quot;&quot;</span>
+  
 		<span class="bp">self</span><span class="o">.</span><span class="n">centerpoints</span> <span class="o">=</span> <span class="n">centerpoints</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">directions</span> <span class="o">=</span> <span class="n">directions</span>
 		<span class="bp">self</span><span class="o">.</span><span class="n">start_end_points</span> <span class="o">=</span> <span class="n">start_end_points</span>
@@ -148,18 +152,22 @@
 <div class="viewcode-block" id="Constructor_Extractor.build_center_profiles"><a class="viewcode-back" href="../../riserfit.html#riserfit.dem.Constructor_Extractor.build_center_profiles">[docs]</a>	<span class="k">def</span> <span class="nf">build_center_profiles</span><span class="p">(</span>
 		<span class="bp">self</span>
 	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">    </span>
 <span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">		Build profiles based on the provided data.</span>
-<span class="sd">  </span>
-<span class="sd">		Parameters:</span>
-<span class="sd">		-----------</span>
-<span class="sd">			None</span>
+<span class="sd">		Build the center lines XY-coordinates of the elevation profile.</span>
+<span class="sd">		Center points and line orientations are supplied when initializing</span>
+<span class="sd">		the ``Constructor_Extractor`` instance and stored in</span>
+<span class="sd">		``self.centerpoints`` and ``self.directions``. Similarly,</span>
+<span class="sd">		spacing and number of points are supplied during instance</span>
+<span class="sd">		creation.#</span>
 
 <span class="sd">		Returns:</span>
 <span class="sd">		--------</span>
 <span class="sd">			self: Self</span>
-<span class="sd">				The ``Constructor_Extractor`` instance.</span>
-<span class="sd">  		&quot;&quot;&quot;</span>
+<span class="sd">				The ``Constructor_Extractor`` instance. XY coordinates</span>
+<span class="sd">				of the created lines are stored in ``self.centerlines``.</span>
+
+<span class="sd">		&quot;&quot;&quot;</span>
 		<span class="n">p_lines</span> <span class="o">=</span> <span class="p">[]</span>
 		<span class="c1"># center lines for both start_end_point true or false,</span>
 		<span class="c1"># the correct spacing should be chosen in the dem.py script.</span>
@@ -185,16 +193,15 @@
 	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 
 <span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">  		Build swath profile point tuples based on the input data.</span>
-
-<span class="sd">		Parameters:</span>
-<span class="sd">		-----------</span>
-<span class="sd">			None</span>
+<span class="sd">  		Build swath lines around the center profile lines created by</span>
+<span class="sd">		``Constructor_Extractor.build_center_profiles()``. This method</span>
+<span class="sd">		raises an error if ``build_center_profiles()`` has not been </span>
+<span class="sd">		called before calling this method.</span>
 
 <span class="sd">		Returns:</span>
 <span class="sd">		--------</span>
 <span class="sd">			self: Self</span>
-<span class="sd">				The ``Constructor_Extractor`` instance.</span>
+<span class="sd">				The ``Constructor_Extractor`` instance with swath coordinates stored in ``self.swath_list``.</span>
 <span class="sd">    	&quot;&quot;&quot;</span>
 
 		<span class="c1"># assuming that swath_number &gt; 0...</span>
@@ -235,18 +242,18 @@
 		<span class="bp">self</span>
 	<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">		</span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">		Builds and unravelles a nested list containing profile lines, swaths,</span>
-<span class="sd">		and points. The decomposed list is used for efficient </span>
-<span class="sd">		elevation extraction from the DEM.</span>
-<span class="sd">  </span>
-<span class="sd">		Parameters:</span>
-<span class="sd">		-----------</span>
-<span class="sd">			None</span>
+<span class="sd">		Flattens the nested lists stored in ``self.swath_list`` into </span>
+<span class="sd">		a single flat list while keeping track of original point</span>
+<span class="sd">		associations. This method is used to enable more efficient sampling</span>
+<span class="sd">		of elevation values from a DEM.</span>
 
 <span class="sd">		Returns:</span>
 <span class="sd">		--------</span>
 <span class="sd">			self: Self</span>
-<span class="sd">				The ``Constructor_Extractor`` instance.</span>
+<span class="sd">				The ``Constructor_Extractor`` instance. The decomposed</span>
+<span class="sd">				points are stored in ``self.decomposed_single_line_points``, or</span>
+<span class="sd">				``self.decomposed_swath_line_points``, if ``self.swath_number&gt;0``.</span>
+<span class="sd">				Point associations to reconstruct the nested list are stored in ``self.ordered_line_len_counter``</span>
 <span class="sd">  		&quot;&quot;&quot;</span>
 		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">swath_number</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 			<span class="c1"># simple decomposition in one step...</span>
@@ -369,7 +376,7 @@
 	<span class="n">dem_min</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
 	<span class="n">dem_max</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">800.</span><span class="p">,</span>
 	<span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-	<span class="o">**</span><span class="n">pd_kwargs</span>
+	<span class="n">read_csv_kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">,</span> <span class="nb">list</span><span class="p">]:</span>
 <span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">	Load a .csv containing a list of profile center points, construct</span>
@@ -421,6 +428,8 @@
 <span class="sd">			exist, the directory is created.</span>
 <span class="sd">		verbose: bool</span>
 <span class="sd">			If True, print some status updates while processing.</span>
+<span class="sd">		read_csv_kwargs: dict</span>
+<span class="sd">			Additional parameters passed to pandas.read_csv().</span>
 
 <span class="sd">	Returns:</span>
 <span class="sd">	--------</span>
@@ -432,7 +441,7 @@
 <span class="sd">			``riserfit.initialize_riser_class()``.</span>
 <span class="sd">	&quot;&quot;&quot;</span>
 
-	<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">pointfilepath</span><span class="p">,</span> <span class="o">**</span><span class="n">pd_kwargs</span><span class="p">)</span>
+	<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">pointfilepath</span><span class="p">,</span> <span class="o">**</span><span class="n">read_csv_kwargs</span><span class="p">)</span>
 	<span class="c1">#print(df)</span>
 	<span class="c1"># create directory for storing results</span>
 	<span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">savedir</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span>
@@ -679,6 +688,7 @@
 		<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">profile</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">profiles_df</span><span class="p">):</span>
 			<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">profile</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">],</span> <span class="n">profile</span><span class="p">[</span><span class="s2">&quot;y&quot;</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
 		<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+  
 	<span class="k">return</span> <span class="p">(</span><span class="n">profiles_df</span><span class="p">,</span> <span class="n">names</span><span class="p">)</span></div>
 
 
@@ -692,7 +702,7 @@
 	<span class="n">smooth_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 	<span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">,</span>
 	<span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-	<span class="o">**</span><span class="n">rio_open_params</span>
+	<span class="n">rio_open_dict</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">]:</span>
 
 <span class="w">	</span><span class="sd">&quot;&quot;&quot;</span>
@@ -715,6 +725,8 @@
 <span class="sd">			Method used to calculate and interpolate the elevation values at the</span>
 <span class="sd">			wanted points. Can take any value permitted by</span>
 <span class="sd">			``scipy.interpolate.interpn()``.</span>
+<span class="sd">		rio_open_dict: dict</span>
+<span class="sd">			Any additional parameters passed on to rio.open().</span>
 
 <span class="sd">	Returns:</span>
 <span class="sd">	--------</span>
@@ -722,7 +734,7 @@
 <span class="sd">			List of :math:`(y, x)` tuples representing the vector pointing in the</span>
 <span class="sd">			direction of steepest descent, in the same order as ``rc_points``.</span>
 <span class="sd">	&quot;&quot;&quot;</span>
-	<span class="n">raster</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">rasterpath</span><span class="p">,</span> <span class="o">**</span><span class="n">rio_open_params</span><span class="p">)</span>
+	<span class="n">raster</span> <span class="o">=</span> <span class="n">rio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\\</span><span class="s2">&quot;</span><span class="o">+</span><span class="n">rasterpath</span><span class="p">,</span> <span class="o">**</span><span class="n">rio_open_dict</span><span class="p">)</span>
 	<span class="n">dem</span> <span class="o">=</span> <span class="n">raster</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">band_no</span><span class="p">)</span>
 	<span class="c1"># get spacings along x, y</span>
 	<span class="n">row_id</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">dem</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])]</span>

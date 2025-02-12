@@ -47,7 +47,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">Licence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../riserfit.html">riserfit documentation</a></li>
 </ul>
 
         </div>
@@ -83,6 +84,7 @@
 
 <span class="c1">#system stuff</span>
 <span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">warnings</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">traceback</span>
+<span class="kn">import</span> <span class="nn">compress_pickle</span> <span class="k">as</span> <span class="nn">pickle</span>
 
 <span class="c1"># data analysis, managing and calculations</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -104,6 +106,11 @@
 <span class="kn">from</span> <span class="nn">.diffusion</span> <span class="kn">import</span> <span class="n">nonlin_diff_perron2011</span>
 <span class="kn">from</span> <span class="nn">.dem</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">.riser_maths</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">.inversion</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">_compute_misfit_for_optimization</span><span class="p">,</span> 
+    <span class="n">_nonlin_invert_uncertainty</span><span class="p">,</span>
+    <span class="n">_lin_invert_uncertainty</span>    
+<span class="p">)</span>
 
 <span class="c1">#########################################################################</span>
 <span class="c1">## Part 1: Dealing with files, file management, setting up Riser class ##</span>
@@ -177,7 +184,7 @@
         <span class="c1"># use the xy_distances function</span>
         <span class="n">x</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df_x</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
         <span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df_y</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
-        <span class="n">d</span><span class="p">,</span> <span class="n">dd</span> <span class="o">=</span> <span class="n">xy_distances</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">d</span><span class="p">,</span> <span class="n">dd</span> <span class="o">=</span> <span class="n">xy_distances</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
         <span class="n">df</span><span class="p">[</span><span class="s2">&quot;d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">d</span> 
         <span class="n">df</span><span class="p">[</span><span class="s2">&quot;dd&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dd</span>
         <span class="n">files</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
@@ -546,220 +553,6 @@
 <span class="c1">## Part 2: Dealing with risers, misfits, and the main Riser class itself ##</span>
 <span class="c1">###########################################################################</span>
 
-<div class="viewcode-block" id="compute_misfit_for_optimization"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.compute_misfit_for_optimization">[docs]</a><span class="k">def</span> <span class="nf">compute_misfit_for_optimization</span><span class="p">(</span>
-    <span class="n">params</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">d_emp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">z_emp</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">scales</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Use ``compute_misfit()`` instead. Only</span>
-<span class="sd">    difference is the data entry format. This function is used to conform to</span>
-<span class="sd">    ``scipy.optimize.minimize``, but less user friendly</span>
-<span class="sd">    compared to ``compute_misfit()``.</span>
-
-<span class="sd">    Parameters:</span>
-<span class="sd">    -----------</span>
-<span class="sd">        params: np.ndarray</span>
-<span class="sd">            Array containing, in order, kt, d_off, z_off, a and b.</span>
-<span class="sd">            All are scaled to one.</span>
-<span class="sd">        d_emp: np.ndarray</span>
-<span class="sd">            Along-profile distances.</span>
-<span class="sd">        z_emp: np.ndarray</span>
-<span class="sd">            Elevations of the profile.</span>
-<span class="sd">        theta: float</span>
-<span class="sd">            Initial riser gradient at midpoint and age zero.</span>
-<span class="sd">        scales: np.ndarray</span>
-<span class="sd">            The actual values for parameters listed in params.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">    --------</span>
-<span class="sd">        misfit: float</span>
-<span class="sd">            Misfit value, calculated by compute_misfit().</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="n">misfit</span> <span class="o">=</span> <span class="n">compute_misfit</span><span class="p">(</span>
-        <span class="n">kt</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-        <span class="n">d_emp</span><span class="o">=</span><span class="n">d_emp</span><span class="p">,</span>
-        <span class="n">z_emp</span><span class="o">=</span><span class="n">z_emp</span><span class="p">,</span>
-        <span class="n">a</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span>
-        <span class="n">b</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span>
-        <span class="n">theta</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span>
-        <span class="n">d_off</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
-        <span class="n">z_off</span><span class="o">=</span><span class="n">scales</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">*</span><span class="n">params</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
-        <span class="n">warning_eps</span><span class="o">=</span><span class="n">warning_eps</span>
-    <span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">misfit</span></div>
-
-<span class="k">def</span> <span class="nf">_nonlinear_t_uncertainty_mse</span><span class="p">(</span>
-    <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">S_c</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">n</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">d_nl</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">z_nl_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">t_nl_matrix</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
-    <span class="n">mse_cutoff</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">float_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to calculate the MSE manipulated in such a way</span>
-<span class="sd">    that min(MSE) = [lower_t, upper_t], i.e., the </span>
-<span class="sd">    uncertainty bounds of t, assuming nonlinear diffusion.</span>
-<span class="sd">    This is achieved using the transformation</span>
-<span class="sd">    MSE = (MSE-mse_cutoff)**2.</span>
-<span class="sd">    </span>
-<span class="sd">    Parameters:</span>
-<span class="sd">    -----------</span>
-<span class="sd">        t: float</span>
-<span class="sd">            Time for which misfit should be evaluated.</span>
-<span class="sd">        d: np.ndarray</span>
-<span class="sd">            Relative distances.</span>
-<span class="sd">        z: np.ndarray</span>
-<span class="sd">            Relative elevations.</span>
-<span class="sd">        k: float</span>
-<span class="sd">            Nonlinear diffusivity.</span>
-<span class="sd">        S_c: float</span>
-<span class="sd">            Critical slope.</span>
-<span class="sd">        n: float</span>
-<span class="sd">            Exponent of the nonlinear diffusion equation.</span>
-<span class="sd">        d_nl: np.ndarray</span>
-<span class="sd">            The distances used for nonlinear diffusion </span>
-<span class="sd">            calculations (equally spaced).</span>
-<span class="sd">        warning_eps: float</span>
-<span class="sd">            Output warning if slopes are lower than this value.</span>
-<span class="sd">        z_nl_matrix: np.ndarray</span>
-<span class="sd">            2d numpy array of pre-computed nonlinear diffusion</span>
-<span class="sd">            profiles of the form.</span>
-<span class="sd">        t_nl_matrix: np.ndarray</span>
-<span class="sd">            Time steps of the previously computed profiles.</span>
-<span class="sd">        mse_cutoff: float</span>
-<span class="sd">            Cutoff for t uncertainty interval, as in Wei et al.</span>
-<span class="sd">            2015: MSE &lt; MSE_min + sigma</span>
-<span class="sd">        float_multiplier: float</span>
-<span class="sd">            Prevents floating point errors in scipy optimize (?).</span>
-<span class="sd">    </span>
-<span class="sd">    Returns:</span>
-<span class="sd">    --------</span>
-<span class="sd">        mse_out: float</span>
-<span class="sd">            The transformed MSE at time t.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    
-    <span class="c1"># prevent negative time evals by returning high mse:</span>
-    <span class="c1">#print(t&lt;0)</span>
-    <span class="k">if</span> <span class="n">t</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span> <span class="k">return</span> <span class="mf">999.</span>
-    
-    <span class="c1"># check if t is in t_nl_matrix:</span>
-    <span class="nb">id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">t_nl_matrix</span><span class="o">==</span><span class="n">t</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
-        <span class="n">z_best</span> <span class="o">=</span> <span class="n">z_nl_matrix</span><span class="p">[</span><span class="nb">id</span><span class="p">[</span><span class="mi">0</span><span class="p">],:]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># get the timestep prior to t:</span>
-        <span class="nb">id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">t_nl_matrix</span><span class="o">&lt;</span><span class="n">t</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-
-        <span class="n">z_start</span> <span class="o">=</span> <span class="n">z_nl_matrix</span><span class="p">[</span><span class="nb">id</span><span class="p">,:]</span>
-        <span class="c1"># run nonlinear diffusion for one time step</span>
-        <span class="n">dx</span> <span class="o">=</span> <span class="n">d_nl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="n">d_nl</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">dt</span> <span class="o">=</span> <span class="n">t</span><span class="o">-</span><span class="n">t_nl_matrix</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
-        <span class="n">z_1step</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nonlin_diff_perron2011</span><span class="p">(</span>
-            <span class="n">z_start</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">S_c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">warning_eps</span>
-        <span class="p">)</span>
-
-        <span class="n">z_best</span> <span class="o">=</span> <span class="n">z_1step</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span>
-    
-    <span class="c1"># interpolate to match spacing of d</span>
-    <span class="n">intfun</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">d_nl</span><span class="p">,</span> <span class="n">z_best</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;cubic&quot;</span><span class="p">)</span>
-    <span class="n">z_at_t</span> <span class="o">=</span> <span class="n">intfun</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-    
-    <span class="c1"># calculate transformed misfit</span>
-
-    <span class="c1"># weights</span>
-    <span class="n">prof_len</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">f_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
-    <span class="n">f_i</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">prof_len</span>
-    <span class="n">f_i</span> <span class="o">*=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f_i</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span><span class="p">))</span>
-    
-    <span class="c1"># calculate mse (without root!)</span>
-    <span class="n">mse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span><span class="o">*</span><span class="p">((</span><span class="n">z</span><span class="o">-</span><span class="n">z_at_t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
-    
-    <span class="c1"># shift down such that misfit is zero if mse = MSE_cutoff</span>
-    <span class="c1"># ensure that 0 is local minimum. </span>
-    <span class="n">mse_out</span> <span class="o">=</span> <span class="p">((</span><span class="n">mse</span><span class="o">-</span><span class="n">mse_cutoff</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">float_multiplier</span> <span class="o">+</span> <span class="mi">1</span>
-
-    <span class="k">return</span> <span class="n">mse_out</span>
-
-
-<span class="k">def</span> <span class="nf">_linear_kt_uncertainty_mse</span><span class="p">(</span>
-    <span class="n">kt</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
-    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
-    <span class="n">b</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">theta</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> 
-    <span class="n">d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
-    <span class="n">z</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> 
-    <span class="n">mse_cutoff</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-    <span class="n">float_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Used to calculate the MSE manipulated in such a way</span>
-<span class="sd">    that min(MSE) = [lower_kt, upper_kt], i.e., the </span>
-<span class="sd">    uncertainty bounds of kt, assuming linear diffusion.</span>
-<span class="sd">    This is achieved using the transformation</span>
-<span class="sd">    MSE = (MSE-mse_cutoff)**2.</span>
-<span class="sd">    </span>
-<span class="sd">    Parameters:</span>
-<span class="sd">    -----------</span>
-<span class="sd">        kt: float</span>
-<span class="sd">            Linear diffusion age.</span>
-<span class="sd">        a: float</span>
-<span class="sd">            Riser height.</span>
-<span class="sd">        b: float</span>
-<span class="sd">            Riser far field slope.</span>
-<span class="sd">        theta: float</span>
-<span class="sd">            Initial slope.</span>
-<span class="sd">        d: np.ndarray</span>
-<span class="sd">            Relative distances.</span>
-<span class="sd">        z: np.ndarray</span>
-<span class="sd">            Relative elevations.</span>
-<span class="sd">        mse_cutoff: float</span>
-<span class="sd">            Cutoff for the kt interval as defined in </span>
-<span class="sd">            Wei et al. (2015): MSE &lt; MSE_min + sigma.</span>
-<span class="sd">        float_multiplier: float</span>
-<span class="sd">            Prevents floating point errors in scipy optimize (?).</span>
-<span class="sd">    </span>
-<span class="sd">    Returns:</span>
-<span class="sd">    --------</span>
-<span class="sd">        mse_out: float</span>
-<span class="sd">            The transformed MSE.</span>
-<span class="sd">            </span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1"># print(a)</span>
-    <span class="c1"># weights</span>
-    <span class="n">prof_len</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">f_i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">))</span>
-    <span class="n">f_i</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="p">(</span><span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">prof_len</span>
-    <span class="n">f_i</span> <span class="o">*=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">f_i</span><span class="p">)</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span><span class="p">))</span>
-    
-    <span class="c1"># best profile</span>
-    <span class="n">z_best</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
-        <span class="n">d</span><span class="p">,</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span>
-    <span class="p">)</span>
-    
-    <span class="c1"># calculate mse (without root!)</span>
-    <span class="n">mse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">f_i</span><span class="o">*</span><span class="p">((</span><span class="n">z</span><span class="o">-</span><span class="n">z_best</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
-    
-    <span class="c1"># shift down such that misfit is zero if mse = MSE_cutoff</span>
-    <span class="c1"># ensure that 0 is local minimum. </span>
-    <span class="n">mse_out</span> <span class="o">=</span> <span class="p">((</span><span class="n">mse</span><span class="o">-</span><span class="n">mse_cutoff</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">float_multiplier</span> <span class="o">+</span> <span class="mi">1</span>
-
-    <span class="k">return</span> <span class="n">mse_out</span>
-
 
 <div class="viewcode-block" id="Riser"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.Riser">[docs]</a><span class="k">class</span> <span class="nc">Riser</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
@@ -947,25 +740,17 @@
 
 <div class="viewcode-block" id="Riser.extract_subset"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.Riser.extract_subset">[docs]</a>    <span class="k">def</span> <span class="nf">extract_subset</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">start</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">stop</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">profiles</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">profiles</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Riser</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        extract_subset: Function to construct a new Riser class object with</span>
-<span class="sd">        a subset of profiles from the original class instance. Use either start</span>
-<span class="sd">        and stop indices or a list of profile names or indices to define the</span>
-<span class="sd">        profiles to be transferred to the subset. All attributes of the original</span>
+<span class="sd">        a subset of profiles from the original class instance.  All attributes of the original</span>
 <span class="sd">        instance are preserved.</span>
+<span class="sd">        </span>
+<span class="sd">        The extraction process is limited to attributes of len(self.name).</span>
 
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
-<span class="sd">            start: int or str</span>
-<span class="sd">                If of type int, position of the first profile to be subset.</span>
-<span class="sd">                If of tpye str, name of the first profile to be subset.</span>
-<span class="sd">            stop: int or str</span>
-<span class="sd">                If of type int, position of the last profile to be subset.</span>
-<span class="sd">                If of type str, name of the last profile to be subset.</span>
 <span class="sd">            profiles: list of int or str</span>
 <span class="sd">                List containing either the index positions or names of profiles</span>
 <span class="sd">                to be subset.</span>
@@ -977,37 +762,24 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="c1"># make a list of indices:</span>
-
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">(</span><span class="n">stop</span><span class="p">):</span>
-                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;ERROR: start, stop must be of same type.&quot;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
-            <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">start</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
-            <span class="n">startID</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
-            <span class="n">stopID</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
-            <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">startID</span><span class="p">,</span> <span class="n">stopID</span><span class="o">+</span><span class="mi">1</span><span class="p">)]</span>
-        <span class="k">elif</span> <span class="n">start</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;ERROR: start, stop must be either str or int.&quot;</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="n">profiles</span> <span class="o">!=</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;ERROR: profiles must be either list or None&quot;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="c1"># return empty instance if no profiles are specified</span>
+        <span class="k">if</span> <span class="n">profiles</span> <span class="o">==</span> <span class="p">[]:</span> <span class="k">return</span> <span class="n">Riser</span><span class="p">([],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">)</span>
+        
+        <span class="c1"># if entries are str, treat as profile names</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span> 
+            <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">profiles</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span> <span class="c1"># expect ints here</span>
             <span class="n">indices</span> <span class="o">=</span> <span class="n">profiles</span>
-        <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">)</span> <span class="ow">is</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">profiles</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
-            <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">p_name</span><span class="p">)</span> <span class="k">for</span> <span class="n">p_name</span> <span class="ow">in</span> <span class="n">profiles</span><span class="p">]</span>
 
         <span class="c1"># create a new, empty instance of riser class:</span>
-
-        <span class="n">new_riser</span> <span class="o">=</span> <span class="n">Riser</span><span class="p">([],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">new_riser</span> <span class="o">=</span> <span class="n">Riser</span><span class="p">([],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">)</span>
 
         <span class="c1"># get all other attributes:</span>
-
         <span class="n">attribute_keys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
 
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">attribute_keys</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">attribute_keys</span><span class="p">:</span>
             <span class="n">attribute</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
                 <span class="n">attribute_subset</span> <span class="o">=</span> <span class="p">[</span><span class="n">attribute</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
                 <span class="nb">setattr</span><span class="p">(</span><span class="n">new_riser</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">attribute_subset</span><span class="p">)</span>
 
@@ -1495,7 +1267,7 @@
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Computing best fit for profile </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
             <span class="n">fit_profile</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                <span class="n">fun</span><span class="o">=</span><span class="n">compute_misfit_for_optimization</span><span class="p">,</span>
+                <span class="n">fun</span><span class="o">=</span><span class="n">_compute_misfit_for_optimization</span><span class="p">,</span>
                 <span class="n">x0</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
                 <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">scales</span><span class="p">,</span> <span class="n">warning_eps</span><span class="p">),</span>
                 <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Powell&quot;</span><span class="p">,</span>
@@ -2395,11 +2167,11 @@
 
 <div class="viewcode-block" id="Riser.calculate_kt_uncertainty"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.Riser.calculate_kt_uncertainty">[docs]</a>    <span class="k">def</span> <span class="nf">calculate_kt_uncertainty</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="n">max_upper_kt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">max_iteration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
         <span class="n">summarypdf</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">ascending</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">float_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -2408,10 +2180,11 @@
 
 <span class="sd">        Parameters:</span>
 <span class="sd">        -----------</span>
-<span class="sd">            tolerance: float</span>
-<span class="sd">                Uncertainty bounds are determined numerically. Lowering the</span>
-<span class="sd">                tolerance will increase the accuracy, but also increase</span>
-<span class="sd">                computation time.</span>
+<span class="sd">            dt: float</span>
+<span class="sd">                Step size when searching for inversion bounds on kt.</span>
+<span class="sd">            max_iteration: int</span>
+<span class="sd">                Maximum number of iterations when searching for </span>
+<span class="sd">                the inversion bounds in kt.</span>
 <span class="sd">            summarypdf: bool</span>
 <span class="sd">                Option to plot all diffusion ages against profile name,</span>
 <span class="sd">                including uncertainty.</span>
@@ -2419,9 +2192,6 @@
 <span class="sd">                Option to plot ages in ascending order.</span>
 <span class="sd">            verbose: bool</span>
 <span class="sd">                Option to print results to console output.</span>
-<span class="sd">            float_multiplier: float</span>
-<span class="sd">                Prevents floating point errors in scipy optimize (?).</span>
-
 
 <span class="sd">        Returns:</span>
 <span class="sd">        --------</span>
@@ -2431,74 +2201,38 @@
  
         <span class="n">l_kt</span><span class="p">,</span><span class="n">u_kt</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
 
-        <span class="c1"># briefly check if any best_kt is larger than max_upper_kt</span>
-        <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">)</span><span class="o">-</span><span class="n">max_upper_kt</span>
-        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">delta</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">):</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;max_upper_kt smaller than np.max(self.best_kt)&quot;</span><span class="p">)</span>
-        
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">op_kt</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">):</span>
-
-            <span class="c1"># residuals:</span>
-            <span class="n">z_best</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
+            
+            <span class="n">geom_params</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;kt&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">}</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">calculate_wei_2015_sigma</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">analytical_profile</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="p">)</span>
             <span class="p">)</span>
-            <span class="n">residuals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">z_best</span>
-            <span class="c1"># calculate the misfit bound:</span>
-            <span class="n">sigma</span> <span class="o">=</span> <span class="n">calculate_wei_2015_sigma</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
-            <span class="n">misfit_cutoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_misfit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sigma</span>
-            
-            <span class="c1"># set up the scipy minimizer for the lower and upper</span>
-            <span class="c1"># bounds, respectively</span>
-
-            <span class="n">params</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> 
-                <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">misfit_cutoff</span><span class="p">,</span> <span class="n">float_multiplier</span>
+             
+            <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span> <span class="o">=</span> <span class="n">_lin_invert_uncertainty</span><span class="p">(</span>
+                <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">z</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">kt_best</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span>
+                <span class="n">min_mse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">best_misfit</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">max_iteration</span><span class="o">=</span><span class="n">max_iteration</span><span class="p">,</span>
+                <span class="n">geom_params</span><span class="o">=</span><span class="n">geom_params</span>
             <span class="p">)</span>
-            
-            <span class="c1"># lower bound</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">lb_opt</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                    <span class="n">fun</span><span class="o">=</span><span class="n">_linear_kt_uncertainty_mse</span><span class="p">,</span>
-                    <span class="n">x0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.9</span><span class="o">*</span><span class="n">op_kt</span><span class="p">]),</span>
-                    <span class="n">args</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-                    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Powell&quot;</span><span class="p">,</span>
-                    <span class="n">bounds</span><span class="o">=</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">op_kt</span><span class="p">),)</span>
-                <span class="p">)</span>
-                <span class="n">lb</span> <span class="o">=</span> <span class="n">lb_opt</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="p">(</span><span class="s2">&quot;Exception raised in linear lower bound calculation: &quot;</span>
-                     <span class="o">+</span><span class="sa">f</span><span class="s2">&quot;instance: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">, profile: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span>
-                     <span class="o">+</span><span class="s2">&quot; Setting lower bound to 0.&quot;</span><span class="p">)</span>
-                <span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
-                <span class="n">lb</span> <span class="o">=</span> <span class="mi">0</span>
-            
-            <span class="c1"># upper bound</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">ub_opt</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                    <span class="n">fun</span><span class="o">=</span><span class="n">_linear_kt_uncertainty_mse</span><span class="p">,</span>
-                    <span class="n">x0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.1</span><span class="o">*</span><span class="n">op_kt</span><span class="p">]),</span>
-                    <span class="n">args</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
-                    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Powell&quot;</span><span class="p">,</span>
-                    <span class="n">bounds</span><span class="o">=</span><span class="p">((</span><span class="n">op_kt</span><span class="p">,</span> <span class="n">max_upper_kt</span><span class="p">),)</span>
-                <span class="p">)</span>
-                <span class="n">ub</span> <span class="o">=</span> <span class="n">ub_opt</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="p">(</span><span class="s2">&quot;Exception raised in linear upper bound calculation:&quot;</span>
-                     <span class="o">+</span><span class="sa">f</span><span class="s2">&quot;instance: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">, profile: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span>
-                     <span class="o">+</span><span class="s2">&quot;Setting lower bound to 0.&quot;</span><span class="p">)</span>
-                <span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
-                <span class="n">ub</span> <span class="o">=</span> <span class="n">max_upper_kt</span>
             
             <span class="k">if</span> <span class="n">verbose</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;kt bounds for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Lower kt = </span><span class="si">{</span><span class="n">lb</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Best kt = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">best_kt</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Upper kt = </span><span class="si">{</span><span class="n">ub</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                
             <span class="n">l_kt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span>
             <span class="n">u_kt</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ub</span><span class="p">)</span>
 
@@ -2543,11 +2277,9 @@
         <span class="n">n</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
         <span class="n">dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span><span class="p">,</span> 
         <span class="n">warning_eps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10e-15</span><span class="p">,</span>
-        <span class="n">max_upper_t</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">max_iteration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10_000</span><span class="p">,</span>
         <span class="n">summarypdf</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">ascending</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-        <span class="n">float_multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate uncertainty bounds for</span>
@@ -2567,121 +2299,54 @@
 <span class="sd">            warning_eps: float</span>
 <span class="sd">                Raise warning if slopes of the modelled profiles</span>
 <span class="sd">                are smaller than warning_eps.</span>
-<span class="sd">            max_upper_t: float</span>
-<span class="sd">                If None, upper bound is set to ``self.nonlin_best_t[i]+5000``.</span>
-<span class="sd">                Otherwise, upper bound is equal to ``max_upper_t``.</span>
+<span class="sd">            max_iteration: int</span>
+<span class="sd">                How far ahead t are computed when searching for the upper</span>
+<span class="sd">                uncertainty bound. The upper limit is determined by </span>
+<span class="sd">                dt*max_iteration</span>
 <span class="sd">            summarypdf: bool</span>
 <span class="sd">                Option to plot all diffusion ages against profile name,</span>
 <span class="sd">                including uncertainty.</span>
-<span class="sd">            ascending: bool</span>
-<span class="sd">                Option to plot ages in ascending order.</span>
 <span class="sd">            verbose: bool</span>
 <span class="sd">                Option to print results to console output.</span>
-<span class="sd">            float_multiplier: float</span>
-<span class="sd">                Prevents floating point errors in scipy optimize (?).</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">        --------</span>
 <span class="sd">            self: Self</span>
 <span class="sd">                The Riser instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="c1"># calculate upper_t_bounds</span>
-        <span class="k">if</span> <span class="n">max_upper_t</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">upper_t_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">))</span><span class="o">*</span><span class="n">upper_t_bound</span> 
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">upper_t_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span><span class="o">+</span><span class="mi">5000</span>
-
-        <span class="n">l_t</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># saving upper and lower t boundaries</span>
+        
+        <span class="n">l_t</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="n">u_t</span> <span class="o">=</span> <span class="p">[]</span>
         
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">opt_t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">):</span>
             
-            <span class="c1"># MSE cutoff criterion</span>
-            <span class="n">residuals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">sigma</span> <span class="o">=</span> <span class="n">calculate_wei_2015_sigma</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
-            <span class="n">misfit_cutoff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_mf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">sigma</span>
-
-            <span class="c1"># spacing</span>
-            <span class="n">dx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_d</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_d</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-            
-            <span class="c1"># get existing nonlin_z_matrix and nonlin_t_times</span>
-            <span class="c1"># if empty, compute again</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_z_matrix</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                
-                <span class="n">z_init</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-                <span class="p">)</span>
-                
-                <span class="n">n_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">upper_t_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">/</span><span class="n">dt</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-
-                <span class="n">z_nl_uncert</span><span class="p">,</span> <span class="n">t_nl_uncert</span> <span class="o">=</span> <span class="n">nonlin_diff_perron2011</span><span class="p">(</span>
-                    <span class="n">z_init</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">n_t</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">S_c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">warning_eps</span>
-                <span class="p">)</span>
-                
-            <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># use the already existing nonlin_z_matrix</span>
-                <span class="c1"># to reduce computation time...</span>
-                <span class="n">z_init</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_z_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span> <span class="c1"># z at opt_t</span>
-                <span class="n">t_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_t_times</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-                <span class="n">n_t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">upper_t_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-</span><span class="n">t_max</span><span class="p">)</span><span class="o">/</span><span class="n">dt</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
-                <span class="n">nl_z_matrix2</span><span class="p">,</span> <span class="n">nl_t_matrix2</span> <span class="o">=</span> <span class="n">nonlin_diff_perron2011</span><span class="p">(</span>
-                    <span class="n">z_init</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">dt</span><span class="p">,</span> <span class="n">n_t</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">S_c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">warning_eps</span>
-                <span class="p">)</span>
-                <span class="n">nl_t_matrix2</span> <span class="o">+=</span> <span class="n">opt_t</span> <span class="c1"># first entry is zero by default...</span>
-                <span class="c1"># concatenate with existing matrix:</span>
-                <span class="c1"># (last time step is there twice, remove once)</span>
-                <span class="n">z_nl_uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_z_matrix</span><span class="p">[</span><span class="n">i</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">,:],</span> <span class="n">nl_z_matrix2</span><span class="p">),</span>
-                    <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
-                <span class="p">)</span>
-                <span class="n">t_nl_uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
-                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_t_times</span><span class="p">[</span><span class="n">i</span><span class="p">][:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">nl_t_matrix2</span><span class="p">)</span>
-                <span class="p">)</span>
-    
-            <span class="n">args</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">k</span><span class="p">,</span> <span class="n">S_c</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-                <span class="n">warning_eps</span><span class="p">,</span> <span class="n">z_nl_uncert</span><span class="p">,</span> <span class="n">t_nl_uncert</span><span class="p">,</span> <span class="n">misfit_cutoff</span><span class="p">,</span>
-                <span class="n">float_multiplier</span>
+            <span class="c1"># calculate wei et al sigma</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">calculate_wei_2015_sigma</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_z</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
             <span class="p">)</span>
-            <span class="c1"># optimize for lower_t:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">lower_t_opt</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                    <span class="n">fun</span><span class="o">=</span><span class="n">_nonlinear_t_uncertainty_mse</span><span class="p">,</span>
-                    <span class="n">x0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">opt_t</span><span class="o">*</span><span class="mf">0.9</span><span class="p">]),</span>
-                    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
-                    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Powell&quot;</span><span class="p">,</span>
-                    <span class="n">bounds</span><span class="o">=</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">opt_t</span><span class="p">),)</span>
-                <span class="p">)</span>
-                <span class="n">lb</span> <span class="o">=</span> <span class="n">lower_t_opt</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-<span class="w">                </span><span class="sd">&#39;&#39;&#39;TODO: What causes ValueError???&#39;&#39;&#39;</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="p">(</span><span class="s2">&quot;Exception raised in nonlinear lower bound calculation:&quot;</span>
-                     <span class="o">+</span><span class="sa">f</span><span class="s2">&quot;instance: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">, profile: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span>
-                     <span class="o">+</span><span class="s2">&quot;Setting lower bound to 0.&quot;</span><span class="p">)</span>
-                <span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
-                <span class="n">lb</span><span class="o">=</span><span class="mi">0</span>
-
-            <span class="c1"># optimize for upper_t:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">upper_t_opt</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
-                    <span class="n">fun</span><span class="o">=</span><span class="n">_nonlinear_t_uncertainty_mse</span><span class="p">,</span>
-                    <span class="n">x0</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">opt_t</span><span class="o">*</span><span class="mf">1.1</span><span class="p">]),</span>
-                    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
-                    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;Powell&quot;</span><span class="p">,</span>
-                    <span class="n">bounds</span><span class="o">=</span><span class="p">((</span><span class="n">opt_t</span><span class="p">,</span> <span class="n">upper_t_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]),)</span>
-                <span class="p">)</span>
-                <span class="n">ub</span> <span class="o">=</span> <span class="n">upper_t_opt</span><span class="o">.</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-                    <span class="p">(</span><span class="s2">&quot;Exception raised in nonlinear upper bound calculation:&quot;</span>
-                     <span class="o">+</span><span class="sa">f</span><span class="s2">&quot;instance: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">, profile: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">.&quot;</span>
-                     <span class="o">+</span><span class="sa">f</span><span class="s2">&quot;Setting upper bound to </span><span class="si">{</span><span class="n">upper_t_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
-                <span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
-                <span class="n">ub</span><span class="o">=</span><span class="n">upper_t_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">geom_params</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;kt&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_a</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_b</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_theta</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="p">}</span>
+            
+            <span class="n">lb</span><span class="p">,</span> <span class="n">ub</span> <span class="o">=</span> <span class="n">_nonlin_invert_uncertainty</span><span class="p">(</span>
+                <span class="n">d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">z</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">nonlin_d</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_d</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">z_best</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_z</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">t_best</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">dt</span><span class="o">=</span><span class="n">dt</span><span class="p">,</span>
+                <span class="n">sigma</span><span class="o">=</span><span class="n">sigma</span><span class="p">,</span>
+                <span class="n">min_mse</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_mf</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+                <span class="n">S_c</span><span class="o">=</span><span class="n">S_c</span><span class="p">,</span>
+                <span class="n">geom_params</span><span class="o">=</span><span class="n">geom_params</span><span class="p">,</span>
+                <span class="n">max_iteration</span><span class="o">=</span><span class="n">max_iteration</span><span class="p">,</span>
+                <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">,</span>
+                <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+                <span class="n">warning_eps</span><span class="o">=</span><span class="n">warning_eps</span>
+            <span class="p">)</span>
 
         
             <span class="n">l_t</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lb</span><span class="p">)</span>
@@ -2690,7 +2355,7 @@
             <span class="k">if</span> <span class="n">verbose</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Calculating t bounds for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Lower t = </span><span class="si">{</span><span class="n">lb</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> kyr&quot;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Best t = </span><span class="si">{</span><span class="n">opt_t</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> kyr&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Best t = </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> kyr&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2"> Upper t = </span><span class="si">{</span><span class="n">ub</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> kyr&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nonlin_lower_t</span> <span class="o">=</span> <span class="n">l_t</span>
@@ -2701,15 +2366,9 @@
             <span class="n">y_upper</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_upper_t</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span>
             <span class="n">y_lower</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_lower_t</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">ascending</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
-                <span class="n">order_ID</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span>
-                <span class="n">y_uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">y_lower</span><span class="p">[</span><span class="n">order_ID</span><span class="p">],</span> <span class="n">y_upper</span><span class="p">[</span><span class="n">order_ID</span><span class="p">]])</span>
-                <span class="n">kt_age</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)[</span><span class="n">order_ID</span><span class="p">]</span>
-                <span class="n">prof_name</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)[</span><span class="n">order_ID</span><span class="p">]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">y_uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">y_lower</span><span class="p">,</span> <span class="n">y_upper</span><span class="p">])</span>
-                <span class="n">kt_age</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span>
-                <span class="n">prof_name</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">y_uncert</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">y_lower</span><span class="p">,</span> <span class="n">y_upper</span><span class="p">])</span>
+            <span class="n">kt_age</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">)</span>
+            <span class="n">prof_name</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 
             <span class="n">plot_at</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nonlin_best_t</span><span class="p">))]</span>
             <span class="n">fg</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
@@ -3482,14 +3141,45 @@
             <span class="k">for</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span> <span class="ow">in</span> <span class="n">attr</span><span class="p">:</span>
                 <span class="c1"># get base riser attribute</span>
                 <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
-                    <span class="n">attr_base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-                    <span class="c1"># get to be added attr</span>
-                    <span class="n">attr_r</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-                    <span class="n">attr_out</span> <span class="o">=</span> <span class="n">attr_base</span> <span class="o">+</span> <span class="n">attr_r</span>
-                    <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">attr_out</span><span class="p">)</span>
-                
+                    <span class="k">try</span><span class="p">:</span> 
+                        <span class="n">attr_base</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">attr_base</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
+                            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Casting base attribute </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> to list&quot;</span><span class="p">)</span>
+                            <span class="n">attr_base</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">attr_base</span><span class="p">)</span>
+                        <span class="c1"># get to be added attr</span>
+                        <span class="n">attr_r</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                        <span class="n">attr_out</span> <span class="o">=</span> <span class="n">attr_base</span> <span class="o">+</span> <span class="n">attr_r</span>
+                        <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">attr_out</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">E</span><span class="p">:</span>
+                        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find attribute </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">, ignoring&quot;</span><span class="p">)</span>
+ 
         <span class="k">return</span> <span class="bp">self</span></div>
+    
+<div class="viewcode-block" id="Riser.save_instance"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.Riser.save_instance">[docs]</a>    <span class="k">def</span> <span class="nf">save_instance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">savedir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
+<span class="w">        </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save a Riser instance using Python&#39;s pickle module.</span>
+<span class="sd">        </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">            Path to subdirectory to which the file is saved.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">            self: Self</span>
+<span class="sd">                The Riser instance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         
+        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="si">}</span><span class="se">\\</span><span class="si">{</span><span class="n">savedir</span><span class="si">}</span><span class="se">\\</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="si">}</span><span class="s2">_Riser_instance.gz&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="s2">&quot;gzip&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="bp">self</span></div>
+    
+    
 <div class="viewcode-block" id="Riser.save_Riser_instance_structure"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.Riser.save_Riser_instance_structure">[docs]</a>    <span class="k">def</span> <span class="nf">save_Riser_instance_structure</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">savedir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
@@ -3660,6 +3350,30 @@
 <span class="c1">##############################################</span>
 <span class="c1">## Part 3: loading a saved riser instance ##</span>
 <span class="c1">##############################################</span>
+
+<div class="viewcode-block" id="load_instance"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.load_instance">[docs]</a><span class="k">def</span> <span class="nf">load_instance</span><span class="p">(</span>
+    <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Union</span><span class="p">[</span><span class="n">Riser</span><span class="p">,</span> <span class="n">RiserPlayground</span><span class="p">,</span> <span class="n">StatsMC</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generic function to load a pickled class instance from a file. This </span>
+<span class="sd">    applies to saved `Riser`, `RiserPlayground`, and `StatsMC` instances.</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">        filename: str</span>
+<span class="sd">            The name of the file.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">        instance: Riser | RiserPlayground | StatsMC</span>
+<span class="sd">            An instance of any of the three classes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span><span class="o">+</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\\</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">instance</span></div>
+
 
 <div class="viewcode-block" id="load_Riser_instance_structure"><a class="viewcode-back" href="../../riserfit.html#riserfit.profiles.load_Riser_instance_structure">[docs]</a><span class="k">def</span> <span class="nf">load_Riser_instance_structure</span><span class="p">(</span>
     <span class="n">filepath</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>

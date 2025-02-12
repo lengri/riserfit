@@ -17,10 +17,12 @@ import itertools as it
 # class for handling list/array reshaping, depending on swath_number
 
 class Constructor_Extractor:
+    
 	"""
- 	Internal class for handeling profile building and 
-  	extracting elevation values from a DEM. 
-  	"""
+		Internal class for handeling profile building and 
+		extracting elevation values from a DEM. 
+	"""
+   
 	def __init__(
 		self,
 		centerpoints: list, 
@@ -31,6 +33,7 @@ class Constructor_Extractor:
 		swath_number: float,
 		swath_spacing: float
 	) -> None:
+     
 		"""
 		Initialize a ``Constructor_Extractor`` instance.
   
@@ -57,7 +60,9 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			None
+   
 		"""
+  
 		self.centerpoints = centerpoints
 		self.directions = directions
 		self.start_end_points = start_end_points
@@ -69,21 +74,22 @@ class Constructor_Extractor:
 	def build_center_profiles(
 		self
 	) -> Self:
+    
 		"""
-		Build the center lines XY-coordinates of elevation profile.
+		Build the center lines XY-coordinates of the elevation profile.
 		Center points and line orientations are supplied when initializing
 		the ``Constructor_Extractor`` instance and stored in
 		``self.centerpoints`` and ``self.directions``. Similarly,
 		spacing and number of points are supplied during instance
-		creation.
+		creation.#
 
 		Returns:
 		--------
 			self: Self
 				The ``Constructor_Extractor`` instance. XY coordinates
-				of the created lines are stored in 
-				``self.centerlines``.
-  		"""
+				of the created lines are stored in ``self.centerlines``.
+
+		"""
 		p_lines = []
 		# center lines for both start_end_point true or false,
 		# the correct spacing should be chosen in the dem.py script.
@@ -117,8 +123,7 @@ class Constructor_Extractor:
 		Returns:
 		--------
 			self: Self
-				The ``Constructor_Extractor`` instance with swath
-    			coordinates stored in ``self.swath_list``.
+				The ``Constructor_Extractor`` instance with swath coordinates stored in ``self.swath_list``.
     	"""
 
 		# assuming that swath_number > 0...
@@ -170,8 +175,7 @@ class Constructor_Extractor:
 				The ``Constructor_Extractor`` instance. The decomposed
 				points are stored in ``self.decomposed_single_line_points``, or
 				``self.decomposed_swath_line_points``, if ``self.swath_number>0``.
-				Point associations to reconstruct the nested list 
-    			are stored in ``self.ordered_line_len_counter``
+				Point associations to reconstruct the nested list are stored in ``self.ordered_line_len_counter``
   		"""
 		if self.swath_number == 0:
 			# simple decomposition in one step...

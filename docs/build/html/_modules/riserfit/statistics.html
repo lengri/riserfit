@@ -47,7 +47,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../licence.html">GNU GENERAL PUBLIC LICENSE</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../licence.html">Licence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../riserfit.html">riserfit documentation</a></li>
 </ul>
 
         </div>
@@ -341,8 +342,11 @@
         <span class="n">theta</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">],</span> 
         <span class="n">d_off</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
         <span class="n">z_off</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-        <span class="n">names</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
-        <span class="n">uniform_d</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">uniform_d</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">use_linear</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">max_dt</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">nonlin_S_c</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Self</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Create riser profiles based on user-defined parameters. </span>
@@ -365,7 +369,7 @@
 <span class="sd">                Shift(s) applied to d after elevations are calculated.</span>
 <span class="sd">            z_off: float | list</span>
 <span class="sd">                Shift(s) applied to z after elevations are calculated.</span>
-<span class="sd">            names: str | list</span>
+<span class="sd">            name: str | list</span>
 <span class="sd">                Name(s) for each riser.</span>
 <span class="sd">            uniform_d: bool</span>
 <span class="sd">                Defines the role of d: If True, d is interpreted as a </span>
@@ -373,6 +377,14 @@
 <span class="sd">                If False, interpreted as a nested list wherein each</span>
 <span class="sd">                element defines a unique distance array used for creating</span>
 <span class="sd">                riser profiles.</span>
+<span class="sd">            use_linear: bool</span>
+<span class="sd">                If `True`, interpret kt as linear diffusion age. If `False`,</span>
+<span class="sd">                assume nonlinear diffusion age. Computing nonlinear profiles</span>
+<span class="sd">                may take a significant amount of time.</span>
+<span class="sd">            max_dt: float</span>
+<span class="sd">                Maximum time step size allowed when building nonlinear profiles.</span>
+<span class="sd">            nonlin_S_c: float</span>
+<span class="sd">                Critical slope used for nonlinear riser profiles.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">        --------</span>
@@ -380,90 +392,165 @@
 <span class="sd">                The RiserPlayground instance.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="c1"># check if any of the parameters are numeric </span>
-        <span class="c1"># (can be converted to float)</span>
-        <span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">d_off</span><span class="p">,</span> <span class="n">z_off</span><span class="p">]</span>
+        <span class="c1"># ignore d for numeric checking</span>
+        <span class="n">in_param_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;kt&quot;</span><span class="p">:</span> <span class="n">kt</span><span class="p">,</span>
+            <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="n">a</span><span class="p">,</span>
+            <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="n">b</span><span class="p">,</span>
+            <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="n">theta</span><span class="p">,</span>
+            <span class="s2">&quot;d_off&quot;</span><span class="p">:</span> <span class="n">d_off</span><span class="p">,</span>
+            <span class="s2">&quot;z_off&quot;</span><span class="p">:</span> <span class="n">z_off</span><span class="p">,</span>
+            <span class="s2">&quot;S_c&quot;</span><span class="p">:</span> <span class="n">nonlin_S_c</span>
+        <span class="p">}</span>
+
+        <span class="c1"># store outputs here</span>
+        <span class="n">out_param_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;d&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;kt&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;d_off&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;z_off&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;S_c&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+        
+        <span class="c1"># check if the input parameters can be converted to float</span>
         <span class="n">par_numeric</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-            <span class="p">[</span><span class="n">_is_numeric</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">]</span>
+            <span class="p">[</span><span class="n">_is_numeric</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">in_param_dict</span><span class="o">.</span><span class="n">values</span><span class="p">()]</span>
         <span class="p">)</span>
+        <span class="c1"># get list parameters</span>
+        <span class="n">list_params</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">key</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">in_param_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> 
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">par_numeric</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="p">]</span>
+        <span class="c1"># check if lengths are equal.</span>
+        <span class="n">list_lengths</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">in_param_dict</span><span class="p">[</span><span class="n">key</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">list_params</span>
+        <span class="p">])</span>
+        
+        <span class="c1"># assert that lists have same length:</span>
+        <span class="k">try</span><span class="p">:</span>
 
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">par_numeric</span><span class="o">==</span><span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">uniform_d</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">list_lengths</span> <span class="o">!=</span> <span class="n">list_lengths</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Input arguments do not have same shapes&quot;</span><span class="p">)</span>
 
-            <span class="c1"># all inputs are numbers, create profile and end</span>
+            <span class="c1"># some parameters are lists, some aren&#39;t -&gt; Cast to same shapes now.</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="n">list_lengths</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">in_param_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">list_params</span><span class="p">:</span>
+                    <span class="n">out_param_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">in_param_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]]</span><span class="o">*</span><span class="n">shape</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">out_param_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">in_param_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        
+        <span class="c1"># all parameters must be floats...</span>
+        <span class="k">except</span> <span class="ne">IndexError</span> <span class="k">as</span> <span class="n">E</span><span class="p">:</span>
 
-            <span class="n">z</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
-                <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">),</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span>
-            <span class="p">)</span>
-            <span class="n">d</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span> <span class="o">+</span> <span class="n">d_off</span><span class="p">]</span>
-            <span class="n">z</span> <span class="o">=</span> <span class="p">[</span><span class="n">z</span> <span class="o">+</span> <span class="n">z_off</span><span class="p">]</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z</span> 
-            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;profile0&quot;</span><span class="p">]</span>
-
-            <span class="k">return</span> <span class="c1"># end routine</span>
-
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">kt</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;theta&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d_off&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d_off</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;z_off&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z_off</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;S_c&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nonlin_S_c</span><span class="p">)</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">E</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not resolve parameters: </span><span class="si">{</span><span class="n">E</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># special cases: names and d</span>
+        <span class="k">if</span> <span class="n">uniform_d</span><span class="p">:</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># some parameters are floats, some are lists...</span>
-            <span class="c1"># duplicate the floats to same length as the lists</span>
-
-            <span class="c1"># check if all lists have the same length:</span>
-            <span class="n">list_param</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">pn</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">par_numeric</span><span class="p">)</span>
-                 <span class="k">if</span> <span class="ow">not</span> <span class="n">pn</span><span class="p">]</span>
-            <span class="n">len_list_param</span> <span class="o">=</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">list_p</span><span class="p">)</span> <span class="k">for</span> <span class="n">list_p</span> <span class="ow">in</span> <span class="n">list_param</span><span class="p">]</span>
-
-            <span class="c1"># check if uniform_d is True:</span>
-
-            <span class="k">if</span> <span class="n">uniform_d</span><span class="p">:</span>
-                <span class="n">ds</span> <span class="o">=</span> <span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">*</span><span class="n">len_list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="p">))</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">]):</span>
+                <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">ds</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> 
-            <span class="c1"># add ds to len_list_param and list_param</span>
-            <span class="n">list_param</span> <span class="o">=</span> <span class="p">[</span><span class="n">ds</span><span class="p">]</span> <span class="o">+</span> <span class="n">list_param</span> 
-
-            <span class="n">len_list_param</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="p">)]</span> <span class="o">+</span> <span class="n">len_list_param</span><span class="p">)</span>
-
-            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">len_list_param</span> <span class="o">!=</span> <span class="n">len_list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Input arguments do not have same lengths&quot;</span><span class="p">)</span>
-
-            <span class="n">out_list</span> <span class="o">=</span> <span class="p">[]</span>
-            <span class="c1"># convert params that are not list to lists...</span>
-            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">is_num</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">par_numeric</span><span class="p">):</span>
-                <span class="k">if</span> <span class="n">is_num</span><span class="p">:</span>
-                    <span class="n">p_l</span> <span class="o">=</span> <span class="p">[</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-                    <span class="n">out_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_l</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span> 
-                    <span class="n">out_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-
-            <span class="c1"># append d to out_list:</span>
-            <span class="n">out_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">list_param</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">+</span> <span class="n">out_list</span>
-
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Shape of non-uniform d does not match other parameters&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># deal with names:</span>
         <span class="c1"># default: use number progression as name</span>
-        <span class="k">if</span> <span class="n">names</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
-            <span class="n">out_names</span> <span class="o">=</span> <span class="p">[</span><span class="n">names</span><span class="o">+</span><span class="s2">&quot;p&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]))]</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="s2">&quot;p&quot;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> 
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">]))</span>
+            <span class="p">]</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">out_names</span> <span class="o">=</span> <span class="n">names</span>
-        <span class="c1"># check if names has correct length (in case user supplied)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_names</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Length of &#39;names&#39; does not equal other parameters&quot;</span><span class="p">)</span>
+            <span class="c1"># check shape of name</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">]):</span>
+                <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Shape of name does not match other parameters&quot;</span><span class="p">)</span>
 
         <span class="c1"># construct profiles</span>
-        <span class="n">z_list_shifted</span> <span class="o">=</span> <span class="p">[]</span>
-        <span class="n">d_list_shifted</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">z_list_out</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">d_list_out</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="c1"># iterate over all parameters</span>
+        <span class="n">zipper</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;kt&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;b&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;theta&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;z_off&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;d_off&quot;</span><span class="p">],</span>
+            <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;S_c&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        
+        <span class="k">for</span> <span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">zoff</span><span class="p">,</span> <span class="n">doff</span><span class="p">,</span> <span class="n">Sc</span><span class="p">)</span> <span class="ow">in</span> <span class="n">zipper</span><span class="p">:</span>
+            
+            <span class="n">d_list_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">+</span> <span class="n">doff</span><span class="p">)</span>
+            
+            <span class="c1"># build linear profiles</span>
+            <span class="k">if</span> <span class="n">use_linear</span><span class="p">:</span>
+                
+                <span class="n">z_list_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">analytical_profile</span><span class="p">(</span>
+                        <span class="n">d</span><span class="p">,</span> <span class="n">kt</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span>
+                    <span class="p">)</span> <span class="o">+</span> <span class="n">zoff</span>
+                <span class="p">)</span>
+            
+            <span class="k">else</span><span class="p">:</span>
 
-        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">out_names</span><span class="p">):</span>
-            <span class="n">z</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span>
-                <span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> 
-                <span class="n">out_list</span><span class="p">[</span><span class="mi">3</span><span class="p">][</span><span class="n">i</span><span class="p">],</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">4</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
-            <span class="p">)</span>
-            <span class="n">d</span> <span class="o">=</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">5</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">z</span> <span class="o">=</span> <span class="n">z</span> <span class="o">+</span> <span class="n">out_list</span><span class="p">[</span><span class="mi">6</span><span class="p">][</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">z_list_shifted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
-            <span class="n">d_list_shifted</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-
-        <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d_list_shifted</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z_list_shifted</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">out_names</span>
+                <span class="c1"># build up nonlinear profiles</span>
+                <span class="n">dx</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="c1"># assume uniform spacing in d.</span>
+                <span class="n">z_init</span> <span class="o">=</span> <span class="n">analytical_profile</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+                
+                <span class="c1"># number of time steps and step size</span>
+                <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">kt</span> <span class="o">/</span> <span class="n">max_dt</span><span class="p">)</span> <span class="c1"># this will give an age smaller than kt.</span>
+                <span class="n">dt_last_step</span> <span class="o">=</span> <span class="n">kt</span> <span class="o">-</span> <span class="n">n</span><span class="o">*</span><span class="n">max_dt</span>
+                
+                <span class="n">z_nl</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nonlin_diff_perron2011</span><span class="p">(</span>
+                    <span class="n">z_init</span><span class="o">=</span><span class="n">z_init</span><span class="p">,</span> 
+                    <span class="n">dx</span><span class="o">=</span><span class="n">dx</span><span class="p">,</span> 
+                    <span class="n">dt</span><span class="o">=</span><span class="n">max_dt</span><span class="p">,</span> 
+                    <span class="n">n_t</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> 
+                    <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+                    <span class="n">S_c</span><span class="o">=</span><span class="n">Sc</span><span class="p">,</span> 
+                    <span class="n">n</span><span class="o">=</span><span class="mi">2</span>
+                <span class="p">)</span>
+                
+                <span class="c1"># calculate last time step</span>
+                <span class="k">if</span> <span class="n">dt_last_step</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">z_nl</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">nonlin_diff_perron2011</span><span class="p">(</span>
+                        <span class="n">z_init</span><span class="o">=</span><span class="n">z_nl</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,:],</span> 
+                        <span class="n">dx</span><span class="o">=</span><span class="n">dx</span><span class="p">,</span> 
+                        <span class="n">dt</span><span class="o">=</span><span class="n">dt_last_step</span><span class="p">,</span> 
+                        <span class="n">n_t</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+                        <span class="n">k</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+                        <span class="n">S_c</span><span class="o">=</span><span class="n">Sc</span><span class="p">,</span> 
+                        <span class="n">n</span><span class="o">=</span><span class="mi">2</span>
+                    <span class="p">)</span>
+                    
+                <span class="n">z_list_out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">z_nl</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,:]</span> <span class="o">+</span> <span class="n">zoff</span><span class="p">)</span>
+        
+        <span class="c1"># append results</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">z_list_out</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d_list_out</span>         
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">out_param_dict</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
         
         <span class="k">return</span> <span class="bp">self</span></div>
 
