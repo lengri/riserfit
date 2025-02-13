@@ -16,6 +16,7 @@ used for morphological dating of terrace risers.
 
    about
    install
+   tutorials
    diffusion_equations
    licence
    riserfit

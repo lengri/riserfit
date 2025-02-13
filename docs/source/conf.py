@@ -33,7 +33,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "nbsphinx",
-    "nbsphinx_link"
+    "nbsphinx_link",
+    "sphinx.ext.mathjax"
 ]
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True

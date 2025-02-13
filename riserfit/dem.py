@@ -383,7 +383,7 @@ def construct_z_profiles_from_centerpoints(
 		directions = calculate_aspect(
 			rasterpath, points, band_no, smooth_first, "linear"
 		)
-		print("Done")
+		print("Done\n")
 
 	else:
 		# check that df has even number of points
@@ -527,7 +527,7 @@ def construct_z_profiles_from_centerpoints(
 			centerlines.append(ce.centerlines[0])
    
 		z_profiles = z_profiles_out
-		if verbose: print("Done")
+		if verbose: print("Done\n")
 
 	# get centerline x, y coordinate, name for each point
 	# center profile
@@ -592,7 +592,7 @@ def construct_z_profiles_from_centerpoints(
 		# save dfs to .csv (NOTE: not in splitprofiles/centerprofiles anymore!!)
 		profile_df.to_csv(path+f"{prof_name_cut[i]}_{name}.csv")
 	
-	print("Done")
+	print("Done\n")
 
 	if view_profiles:
 
