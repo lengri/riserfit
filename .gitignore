@@ -1,0 +1,9 @@
+riserfit.egg-info
+__pycache__
+**/*.csv
+**/*.gz
+.ipynb_checkpoints
+
+# Do not ignore these files
+!Tutorials/Data/Risers/Midpoints/midpoints_T3.csv
+!Tutorials/Data/Risers/Midpoints/midpoints_T7.csv
