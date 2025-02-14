@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diffusion equations &mdash; riserfit 0.0.2 documentation</title>
+  <title>Morphological dating &mdash; riserfit 0.0.2 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -18,6 +18,8 @@
         <script src="_static/doctools.js"></script>
         <script src="_static/sphinx_highlight.js"></script>
         <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+        <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+        <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="author" title="About these documents" href="about.html" />
     <link rel="index" title="Index" href="genindex.html" />
@@ -50,7 +52,12 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorials.html">Tutorials</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Diffusion equations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Morphological dating</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#hillslope-diffusion">Hillslope diffusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nonlinear-diffusion">Nonlinear Diffusion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#nonlocal-models">Nonlocal models</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="licence.html">Licence</a></li>
 <li class="toctree-l1"><a class="reference internal" href="riserfit.html">riserfit documentation</a></li>
 </ul>
@@ -69,7 +76,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Diffusion equations</li>
+      <li class="breadcrumb-item active">Morphological dating</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/diffusion_equations.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -79,8 +86,76 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="diffusion-equations">
-<h1>Diffusion equations<a class="headerlink" href="#diffusion-equations" title="Permalink to this heading"></a></h1>
+  <section id="morphological-dating">
+<h1>Morphological dating<a class="headerlink" href="#morphological-dating" title="Permalink to this heading"></a></h1>
+<p>This page gives a brief overview of the mathematics and physics behind morphological dating.
+The idea behind all forms of morphological dating is simple: Fault scarps, shorelines,
+marine terraces, and fluvial terrace risers are <em>transient</em> landscape features whose shape
+changes continuously from the time of their creation until they are no longer recognizable
+as scarps or risers. Thus, the degree of degradation can tell us something about the age of
+the landform.</p>
+<p>Risers and scarps have a steep face embedded in a sub-horizontal far field. Erosion acts to
+degrade steep slopes and will ultimately level the landform by removing material from the
+crest of the riser and depositing it at its base/toe. Because risers and scarps are smooth
+landforms, no convergent flow occurs on the landform itself. Erosion and flow on scarps and
+risers is diffuse in nature.</p>
+<section id="hillslope-diffusion">
+<h2>Hillslope diffusion<a class="headerlink" href="#hillslope-diffusion" title="Permalink to this heading"></a></h2>
+<p>Traditionally, diffusion equations are used to understand the evolution of risers and scarps.
+Based on the assumption that sediment is eroded by rainsplash, freeze-thaw cycles, animal
+burrowing, and plant uprooting, individual grains of sediment are assumed to travel only
+small distances such that local sediment flux depends only on local slope conditions.
+In other words:</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[q_s = k\frac{\partial z}{\partial x}\]</div>
+</div></blockquote>
+<p>Sediment that is added to the sediment flux <span class="math notranslate nohighlight">\(q_s\)</span> has to come from somewhere, and
+sediment removed from the flux has to go somewhere. This realisation takes the form of a
+mass preservation statement on a <em>local</em> scale</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\frac{\partial q_s}{\partial x} = \frac{\partial z}{\partial t}\]</div>
+</div></blockquote>
+<p>By combining the linear flux-slope equation with the mass preservation statement, we arrive
+at the linear diffusion equation</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\frac{\partial z}{\partial t} = k\frac{\partial^2 z}{\partial x^2}.\]</div>
+</div></blockquote>
+<p>Risers and scarps evolving according to this equation is a fundamental assumption of almost
+all morphological dating efforts. Because we can quantify how fast a landform erodes
+(<span class="math notranslate nohighlight">\(\partial z / \partial t\)</span>), we can calculate how long it must have taken for a scarp or
+riser encountered in the field to reach its observed form.</p>
+</section>
+<section id="nonlinear-diffusion">
+<h2>Nonlinear Diffusion<a class="headerlink" href="#nonlinear-diffusion" title="Permalink to this heading"></a></h2>
+<p>There is an active debate on whether linear diffusion accurately depicts erosion on steep slopes.
+More specifically, linear diffusion predicts a convex-up hillslope form, while many hillslopes in
+nature have near zero concavitiy at steep slopes
+(<a class="reference external" href="https://doi.org/10.1029/1998WR900090">Roering et al. 1999</a>). This led
+<a class="reference external" href="https://doi.org/10.1029/JB092iB12p12857">Andrews and Bucknam (1987)</a> and
+<a class="reference external" href="https://doi.org/10.1029/1998WR900090">Roering et al. (1999)</a> to propose a nonlinear
+dependence of sediment flux on slope, approaching infinity for slopes close to some
+critical slope <span class="math notranslate nohighlight">\(S_c\)</span>:</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[q_s = \frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)}\]</div>
+</div></blockquote>
+<p>which leads to an alternative, nonlinear diffusion equation</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\frac{\partial z}{\partial t} = \frac{\partial}{\partial x}\left(\frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)}\right)\]</div>
+</div></blockquote>
+<p>Both equations, linear and nonlinear diffusion, have been used to infer morphological ages of scarp-like
+features, and both equations can be used in riserfit.</p>
+</section>
+<section id="nonlocal-models">
+<h2>Nonlocal models<a class="headerlink" href="#nonlocal-models" title="Permalink to this heading"></a></h2>
+<p>Recently, nonlocal models of sediment transport have become more popular to analyse the evolution
+of fault scarps specifically (e.g. <a class="reference external" href="https://doi.org/10.1130/G52987.1">Gray et al. 2025</a>).
+At the moment, nonlocal methods are not implemented in riserfit.</p>
+</section>
 </section>
 
 

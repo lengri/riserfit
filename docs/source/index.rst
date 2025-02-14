@@ -6,9 +6,12 @@
 Welcome to riserfit's documentation!
 =========================================
 
-Version: 0.0.2
-This is the documentation of `riserfit`, a Python library
-used for morphological dating of terrace risers.
+This is the documentation of `riserfit`, Version 0.0.2, a Python library
+used for morphological dating of terrace risers and other scarp-like landforms.
+
+There are many reasons to be interested in morphological dating: It can be easier to 
+use than isotopic dating methods, is *much* cheaper, and it doesn't require direct
+access to the landforms of interest (as long as there is a LiDAR DEM). 
 
 .. toctree::
    :maxdepth: 1
@@ -20,10 +23,7 @@ used for morphological dating of terrace risers.
    diffusion_equations
    licence
    riserfit
-
-Indices and tables
-==================
-
+   
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+
+
