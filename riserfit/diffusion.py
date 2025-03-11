@@ -437,7 +437,7 @@ def nonlin_diffusion_explicit_Perron2011(
             2*prof_matrix[i-1,1:-1] + prof_matrix[i-1,:-2]) / (dx**2)
         
         term1 = (z_xx) / (1 - (z_x / S_c)**2)
-        term2 = (2*(z_x**2)*z_xx) / ((S_c**2)*(1-(z_x/S_c)**2))
+        term2 = (2*(z_x**2)*z_xx) / ((S_c**2)*(1-(z_x/S_c)**2)**2)
         
         prof_matrix[i,1:-1] = prof_matrix[i-1,1:-1] + rho_ratio*uplift_rate*dt + \
             dt*k*(term1 + term2)
