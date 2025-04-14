@@ -479,7 +479,6 @@ class RiserPlayground(Riser):
     def add_gaussian_z_noise(
         self,
         dx: float = 12.,
-        cell_shift: float = 0.,
         mean_z: float = 0.,
         std_z: float = 0.75,
         method: str = "linear"
@@ -496,7 +495,7 @@ class RiserPlayground(Riser):
                 Spatial resolution of the gaussian noise. If None,
                 a noise value is calculated for each point of data.
                 Otherwise, it is calculated at
-                np.arange(self.d[i].min()+cell_shift, self.d[i].max(),dx)
+                np.arange(self.d[i].min(), self.d[i].max(), dx)
                 and interpolated to match self.d[i].
             mean_z: float
                 The mean of the gaussian distribution.
@@ -520,7 +519,7 @@ class RiserPlayground(Riser):
                 )
             else:
                 # calculate positions for noise
-                d_noise = np.arange(d.min()+cell_shift, d.max()+dx, dx)
+                d_noise = np.arange(d.min(), d.max()+dx, dx)
                 # calculate corresponding noise values
                 z_noise_dx = np.random.normal(
                     mean_z, std_z, size=d_noise.shape
@@ -746,7 +745,6 @@ class RiserPlayground(Riser):
     def downsample_upsample_profiles(
         self,
         resample_dx: float = 12.,
-        cell_shift: float = 6.,
         method: str = "cubic",
         add_noise: bool = False,
         mean_z: float = 0.,
@@ -762,12 +760,6 @@ class RiserPlayground(Riser):
         -----------
             resample_dx: float
                 Grid size of the simulated DEM, in meters.
-            cell_shift: float
-                Offset at beginning of profile. Prevents
-                smaller bins at the beginning and may
-                introduce asymmetry in the resampled profile.
-                Value should be >= 0, or unaccounted 
-                boundary effects may occur.
             method: str
                 Interpolation method for resampling. Must be
                 accepted by scipy.interpolate.interp1d().
@@ -794,11 +786,11 @@ class RiserPlayground(Riser):
             min, max = d.min(), d.max()
             
             # get the minimum (shifted) DEM cell center allowed:
-            D0 = min + resample_dx/2 + cell_shift
+            D0 = min + resample_dx/2
 
             # construct all cell centers
             d_DEM = np.arange(
-                D0, max-resample_dx/2+cell_shift, resample_dx
+                D0, max-resample_dx/2, resample_dx
             )
             
             # construct the partitioned matrix M, which contains the
