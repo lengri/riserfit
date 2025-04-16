@@ -52,11 +52,11 @@ nature have near zero concavitiy at steep slopes
 dependence of sediment flux on slope, approaching infinity for slopes close to some 
 critical slope :math:`S_c`:
 
-    .. math:: q_s = \frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)}
+    .. math:: q_s = \frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)^2}
 
 which leads to an alternative, nonlinear diffusion equation
 
-    .. math:: \frac{\partial z}{\partial t} = \frac{\partial}{\partial x}\left(\frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)}\right)
+    .. math:: \frac{\partial z}{\partial t} = \frac{\partial}{\partial x}\left(\frac{k\frac{\partial z}{\partial x}}{1-\left(S_c^{-1}\frac{\partial z}{\partial x}\right)^2}\right)
 
 Both equations, linear and nonlinear diffusion, have been used to infer morphological ages of scarp-like 
 features, and both equations can be used in riserfit.

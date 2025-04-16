@@ -23,6 +23,7 @@ access to the landforms of interest (as long as there is a LiDAR DEM).
    diffusion_equations
    licence
    riserfit
+   
 * :ref:`genindex`
 
 

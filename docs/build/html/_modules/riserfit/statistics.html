@@ -46,7 +46,8 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Diffusion equations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diffusion_equations.html">Morphological dating</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../licence.html">Licence</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../riserfit.html">riserfit documentation</a></li>
 </ul>
@@ -557,7 +558,6 @@
 <div class="viewcode-block" id="RiserPlayground.add_gaussian_z_noise"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.add_gaussian_z_noise">[docs]</a>    <span class="k">def</span> <span class="nf">add_gaussian_z_noise</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.</span><span class="p">,</span>
-        <span class="n">cell_shift</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
         <span class="n">mean_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
         <span class="n">std_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span><span class="p">,</span>
         <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span>
@@ -574,7 +574,7 @@
 <span class="sd">                Spatial resolution of the gaussian noise. If None,</span>
 <span class="sd">                a noise value is calculated for each point of data.</span>
 <span class="sd">                Otherwise, it is calculated at</span>
-<span class="sd">                np.arange(self.d[i].min()+cell_shift, self.d[i].max(),dx)</span>
+<span class="sd">                np.arange(self.d[i].min(), self.d[i].max(), dx)</span>
 <span class="sd">                and interpolated to match self.d[i].</span>
 <span class="sd">            mean_z: float</span>
 <span class="sd">                The mean of the gaussian distribution.</span>
@@ -598,7 +598,7 @@
                 <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># calculate positions for noise</span>
-                <span class="n">d_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">+</span><span class="n">cell_shift</span><span class="p">,</span> <span class="n">d</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">)</span>
+                <span class="n">d_noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">d</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">+</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">)</span>
                 <span class="c1"># calculate corresponding noise values</span>
                 <span class="n">z_noise_dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
                     <span class="n">mean_z</span><span class="p">,</span> <span class="n">std_z</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">d_noise</span><span class="o">.</span><span class="n">shape</span>
@@ -824,7 +824,6 @@
 <div class="viewcode-block" id="RiserPlayground.downsample_upsample_profiles"><a class="viewcode-back" href="../../riserfit.html#riserfit.statistics.RiserPlayground.downsample_upsample_profiles">[docs]</a>    <span class="k">def</span> <span class="nf">downsample_upsample_profiles</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">resample_dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">12.</span><span class="p">,</span>
-        <span class="n">cell_shift</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.</span><span class="p">,</span>
         <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cubic&quot;</span><span class="p">,</span>
         <span class="n">add_noise</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
         <span class="n">mean_z</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
@@ -840,12 +839,6 @@
 <span class="sd">        -----------</span>
 <span class="sd">            resample_dx: float</span>
 <span class="sd">                Grid size of the simulated DEM, in meters.</span>
-<span class="sd">            cell_shift: float</span>
-<span class="sd">                Offset at beginning of profile. Prevents</span>
-<span class="sd">                smaller bins at the beginning and may</span>
-<span class="sd">                introduce asymmetry in the resampled profile.</span>
-<span class="sd">                Value should be &gt;= 0, or unaccounted </span>
-<span class="sd">                boundary effects may occur.</span>
 <span class="sd">            method: str</span>
 <span class="sd">                Interpolation method for resampling. Must be</span>
 <span class="sd">                accepted by scipy.interpolate.interp1d().</span>
@@ -872,11 +865,11 @@
             <span class="nb">min</span><span class="p">,</span> <span class="nb">max</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">d</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
             
             <span class="c1"># get the minimum (shifted) DEM cell center allowed:</span>
-            <span class="n">D0</span> <span class="o">=</span> <span class="nb">min</span> <span class="o">+</span> <span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="n">cell_shift</span>
+            <span class="n">D0</span> <span class="o">=</span> <span class="nb">min</span> <span class="o">+</span> <span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span>
 
             <span class="c1"># construct all cell centers</span>
             <span class="n">d_DEM</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span>
-                <span class="n">D0</span><span class="p">,</span> <span class="nb">max</span><span class="o">-</span><span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span><span class="o">+</span><span class="n">cell_shift</span><span class="p">,</span> <span class="n">resample_dx</span>
+                <span class="n">D0</span><span class="p">,</span> <span class="nb">max</span><span class="o">-</span><span class="n">resample_dx</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">resample_dx</span>
             <span class="p">)</span>
             
             <span class="c1"># construct the partitioned matrix M, which contains the</span>
